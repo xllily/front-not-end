@@ -1,0 +1,327 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://front-not-end.dev/evals/contracts/comparison-environment.schema.json",
+  "title": "Version 0.1 comparison environment manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "caseId",
+    "runId",
+    "arm",
+    "capturedAt",
+    "host",
+    "model",
+    "outerInstructions",
+    "skills",
+    "plugins",
+    "hostSettings",
+    "toolPermissions",
+    "operatingEnvironment",
+    "frozenInputs",
+    "repository",
+    "agentInputProjection",
+    "intervention"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "caseId": { "$ref": "#/$defs/id" },
+    "runId": { "$ref": "#/$defs/id" },
+    "arm": { "$ref": "#/$defs/arm" },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "build"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "build": { "type": "string", "minLength": 1 }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "modelId", "version", "reasoningEffort", "serviceTier"],
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "modelId": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "reasoningEffort": { "type": "string", "minLength": 1 },
+        "serviceTier": { "type": "string", "minLength": 1 }
+      }
+    },
+    "outerInstructions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/loadedArtifact" }
+    },
+    "skills": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/capability" }
+    },
+    "plugins": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/capability" }
+    },
+    "hostSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["values", "secretNames", "digest"],
+      "properties": {
+        "values": { "type": "object", "additionalProperties": true },
+        "secretNames": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "toolPermissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tools", "filesystem", "network", "approvalPolicy", "digest"],
+      "properties": {
+        "tools": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "filesystem": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "network": { "enum": ["disabled", "restricted", "enabled"] },
+        "approvalPolicy": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "operatingEnvironment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "architecture", "timezone", "locale", "runtimeVersions", "environmentVariableNames", "digest"],
+      "properties": {
+        "os": { "type": "string", "minLength": 1 },
+        "architecture": { "type": "string", "minLength": 1 },
+        "timezone": { "type": "string", "minLength": 1 },
+        "locale": { "type": "string", "minLength": 1 },
+        "runtimeVersions": { "type": "object", "additionalProperties": { "type": "string" } },
+        "environmentVariableNames": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "frozenInputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authoringRevision",
+        "caseDigest",
+        "oracleDigest",
+        "holdoutCommitmentDigest"
+      ],
+      "properties": {
+        "authoringRevision": { "$ref": "#/$defs/revision" },
+        "caseDigest": { "$ref": "#/$defs/digest" },
+        "oracleDigest": { "$ref": "#/$defs/digest" },
+        "holdoutCommitmentDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revisionBefore", "treeDigestBefore", "cleanBefore"],
+      "properties": {
+        "revisionBefore": { "$ref": "#/$defs/revision" },
+        "treeDigestBefore": { "$ref": "#/$defs/digest" },
+        "cleanBefore": { "type": "boolean" }
+      }
+    },
+    "agentInputProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "declaredRoot",
+        "files",
+        "projectionDigest",
+        "controlRootMounted",
+        "unexpectedReadableArtifacts",
+        "resolvedPathsOutsideRoot",
+        "containmentCheckPassed",
+        "preflightPassed"
+      ],
+      "properties": {
+        "declaredRoot": { "$ref": "common.schema.json#/$defs/strictRelativePath" },
+        "files": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/projectedArtifact" } },
+        "projectionDigest": { "$ref": "#/$defs/digest" },
+        "controlRootMounted": { "type": "boolean" },
+        "unexpectedReadableArtifacts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "resolvedPathsOutsideRoot": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "containmentCheckPassed": { "type": "boolean" },
+        "preflightPassed": { "type": "boolean" }
+      }
+    },
+    "intervention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "artifacts", "sourceRevision", "skillPackages", "digest"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/arm" },
+        "artifacts": { "type": "array", "items": { "$ref": "#/$defs/loadedArtifact" } },
+        "sourceRevision": { "anyOf": [{ "$ref": "#/$defs/revision" }, { "type": "null" }] },
+        "skillPackages": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/skillPackage" }
+        },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "arm": { "const": "bare-codex" },
+            "intervention": {
+              "properties": {
+                "kind": { "const": "bare-codex" },
+                "artifacts": { "maxItems": 0 },
+                "sourceRevision": { "type": "null" },
+                "skillPackages": { "maxItems": 0 }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "arm": { "const": "concise-agents" },
+            "intervention": {
+              "properties": {
+                "kind": { "const": "concise-agents" },
+                "artifacts": {
+                  "minItems": 1,
+                  "maxItems": 1,
+                  "items": {
+                    "allOf": [
+                      { "$ref": "#/$defs/loadedArtifact" },
+                      { "properties": { "logicalName": { "const": "AGENTS.md" } } }
+                    ]
+                  }
+                },
+                "sourceRevision": { "$ref": "#/$defs/revision" },
+                "skillPackages": { "maxItems": 0 }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "arm": { "const": "front-not-end-v0.1" },
+            "intervention": {
+              "properties": {
+                "kind": { "const": "front-not-end-v0.1" },
+                "artifacts": { "minItems": 1 },
+                "sourceRevision": { "$ref": "#/$defs/revision" },
+                "skillPackages": { "minItems": 1 }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "arm": { "enum": ["bare-codex", "concise-agents", "front-not-end-v0.1"] },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "revision": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" },
+    "loadedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logicalName", "source", "scope", "order", "digest"],
+      "properties": {
+        "logicalName": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "order": { "type": "integer", "minimum": 0 },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "projectedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logicalName", "source", "path", "scope", "order", "digest"],
+      "properties": {
+        "logicalName": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "path": { "$ref": "common.schema.json#/$defs/strictRelativePath" },
+        "scope": { "type": "string", "minLength": 1 },
+        "order": { "type": "integer", "minimum": 0 },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "enabled", "configurationDigest"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "enabled": { "type": "boolean" },
+        "configurationDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "skillPackage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "packageDigest", "loadedArtifacts", "helpers", "dependencies"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "packageDigest": { "$ref": "#/$defs/digest" },
+        "loadedArtifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/loadedArtifact" }
+        },
+        "helpers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "version", "digest", "networkAccess"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "version": { "type": "string", "minLength": 1 },
+              "digest": { "$ref": "#/$defs/digest" },
+              "networkAccess": { "enum": ["disabled", "restricted", "enabled"] }
+            }
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "source",
+              "version",
+              "available",
+              "authenticationRequired",
+              "networkRequired",
+              "rateOrCost"
+            ],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "source": { "type": "string", "minLength": 1 },
+              "version": { "type": ["string", "null"] },
+              "available": { "type": "boolean" },
+              "authenticationRequired": { "type": "boolean" },
+              "networkRequired": { "type": "boolean" },
+              "rateOrCost": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+# OS metadata
+.DS_Store
+
+# Local agent and development-tool state
+/.agents/
+/.claude/
+/.codex/
+/.cursor/
+/.gemini/
+/.serena/
+/.codegraph/
+/.gitnexus/
+/.understand-anything/
+/.superpowers/
+/.playwright-mcp/
+/.impeccable/
+/.scratch/

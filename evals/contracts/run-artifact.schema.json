@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://front-not-end.dev/evals/contracts/run-artifact.schema.json",
+  "title": "Version 0.1 captured run artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "caseId",
+    "runId",
+    "arm",
+    "caseDigest",
+    "environmentDigest",
+    "startedAt",
+    "finishedAt",
+    "taskOutput",
+    "selfReportedCompletionState",
+    "toolInvocations",
+    "evidence",
+    "repositoryAfter",
+    "observations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "caseId": { "$ref": "#/$defs/id" },
+    "runId": { "$ref": "#/$defs/id" },
+    "arm": { "enum": ["bare-codex", "concise-agents", "front-not-end-v0.1"] },
+    "caseDigest": { "$ref": "#/$defs/digest" },
+    "environmentDigest": { "$ref": "#/$defs/digest" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "finishedAt": { "type": "string", "format": "date-time" },
+    "taskOutput": { "$ref": "#/$defs/artifact" },
+    "selfReportedCompletionState": { "enum": ["IN_PROGRESS", "PASS", "FAIL", "BLOCKED", "NOT_REPORTED"] },
+    "toolInvocations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "invocationId",
+          "tool",
+          "startedAt",
+          "finishedAt",
+          "repositoryRevision",
+          "repositoryTreeDigestBefore",
+          "repositoryTreeDigestAfter",
+          "outcome",
+          "output"
+        ],
+        "properties": {
+          "invocationId": { "$ref": "#/$defs/id" },
+          "tool": { "type": "string", "minLength": 1 },
+          "startedAt": { "type": "string", "format": "date-time" },
+          "finishedAt": { "type": "string", "format": "date-time" },
+          "repositoryRevision": { "$ref": "#/$defs/revision" },
+          "repositoryTreeDigestBefore": { "$ref": "#/$defs/digest" },
+          "repositoryTreeDigestAfter": { "$ref": "#/$defs/digest" },
+          "outcome": { "enum": ["SUCCEEDED", "FAILED", "BLOCKED", "CANCELLED"] },
+          "output": { "$ref": "#/$defs/artifact" }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "evidenceId",
+          "category",
+          "artifact",
+          "producer",
+          "producedAt",
+          "repositoryRevision",
+          "repositoryTreeDigest",
+          "sourceInvocationIds",
+          "outcome",
+          "enforcementOrigin"
+        ],
+        "properties": {
+          "evidenceId": { "$ref": "#/$defs/id" },
+          "category": { "$ref": "#/$defs/evidenceCategory" },
+          "artifact": { "$ref": "#/$defs/artifact" },
+          "producer": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "name", "version", "digest"],
+            "properties": {
+              "kind": { "enum": ["host-tool", "repository-command", "skill-helper", "pre-existing-control", "expert-adjudication"] },
+              "name": { "type": "string", "minLength": 1 },
+              "version": { "type": ["string", "null"] },
+              "digest": { "anyOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }] }
+            }
+          },
+          "producedAt": { "type": "string", "format": "date-time" },
+          "repositoryRevision": { "$ref": "#/$defs/revision" },
+          "repositoryTreeDigest": { "$ref": "#/$defs/digest" },
+          "sourceInvocationIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+          "outcome": { "enum": ["PASSED", "FAILED", "INCONCLUSIVE"] },
+          "enforcementOrigin": { "enum": ["none", "adapter-authored", "pre-existing-repository", "pre-existing-environment"] },
+          "agentClaimedAssuranceLevel": { "enum": ["A0", "A1", "A2", "A3"] }
+        }
+      }
+    },
+    "repositoryAfter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "treeDigest", "dirty"],
+      "properties": {
+        "revision": { "$ref": "#/$defs/revision" },
+        "treeDigest": { "$ref": "#/$defs/digest" },
+        "dirty": { "type": "boolean" }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elapsedMilliseconds", "inputTokens", "outputTokens", "cost"],
+      "properties": {
+        "elapsedMilliseconds": { "type": "integer", "minimum": 0 },
+        "inputTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "outputTokens": { "type": ["integer", "null"], "minimum": 0 },
+        "cost": { "type": ["number", "null"], "minimum": 0 },
+        "currency": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "revision": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locator", "digest", "mediaType"],
+      "properties": {
+        "locator": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" },
+        "mediaType": { "type": "string", "minLength": 1 }
+      }
+    },
+    "evidenceCategory": {
+      "enum": [
+        "agent-output",
+        "repository-artifact",
+        "test-output",
+        "command-output",
+        "query-output",
+        "review-artifact",
+        "ci-gate",
+        "runtime-control",
+        "external-control",
+        "expert-adjudication"
+      ]
+    }
+  }
+}
