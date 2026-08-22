@@ -1,22 +1,19 @@
-# Evaluation Harness Primitives
+# Tracer Acceptance Runner
 
-This directory contains small, case-independent control-side primitives used by
-fixture materialization and evaluation. It is not projected into an Agent run
-workspace.
+[`run-tracer-acceptance.mjs`](run-tracer-acceptance.mjs) executes the active
+List/Search acceptance test against a completed workspace:
 
-`path-policy.mjs` loads the canonical strict relative-path pattern from
-`contracts/common.schema.json` and then performs the filesystem check that JSON
-Schema cannot: after following symlinks, the declared root must remain below the
-Host-owned materialization base and each selected path must remain below that
-root. Any parse, resolution, or containment failure is fail-closed and must be
-captured by the comparison environment manifest.
+```sh
+node evals/harness/run-tracer-acceptance.mjs --workspace /path/to/workspace
+```
 
-`evidence-policy.mjs` binds evidence to its source invocation's post-command
-tree and, for repository-dependent requirements, to the final delivered tree.
-Reusing a check after an uncommitted code change therefore fails as stale
-evidence even though the Git revision has not changed.
+The runner starts a separate Node process with:
 
-`tree-digest.mjs` computes that identity on the control side from a sorted,
-versioned manifest of every non-`.git` file and symlink under the repository
-root. File content, executable mode, relative path, and symlink target are
-covered. A tree that changes during hashing fails closed.
+- a scrubbed environment;
+- filesystem reads limited to the completed workspace and acceptance test;
+- no filesystem write, child-process, or Worker permission; and
+- a 15-second timeout.
+
+The test observes actual two-page behavior and the runtime call path through the
+existing query helper. It does not accept response wording, a comment, or an
+unused import as proof.
