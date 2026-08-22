@@ -1,171 +1,48 @@
-# Executable Skill Packages
+# Executable Skill Package
 
-Version 0.1 packages concrete Codex behavior as small executable skill packages.
-This is an implementation shape for the Codex Reference Adapter and the first
-Stack Pack, not a generic pack standard, registry, compiler, or compatibility
-claim for other Hosts.
-
-The packaging approach is informed by
-[`ReScienceLab/opc-skills`](https://github.com/ReScienceLab/opc-skills/tree/bbee097e9b249e39f7347a2348cc33c89a810a3c),
-which demonstrates that a useful skill can combine instructions, scripts,
-references, dependencies, and a concrete workflow. front-not-end adopts that
-separation of responsibilities, not the upstream project's domain claims,
-service dependencies, catalog, or publication infrastructure.
-
-## Package boundary
-
-A package contains only artifacts that change the Host's behavior for one
-evaluated capability:
+Version 0.1 ships one Codex-compatible package:
 
 ```text
-skills/<capability>/
-├── SKILL.md             # activation, decision policy, boundaries, workflow
-├── agents/openai.yaml   # optional Codex-facing metadata
-├── references/          # conditional, sourced domain or repository guidance
-└── scripts/             # deterministic inspection or verification helpers
+skills/front-not-end/
+├── SKILL.md
+└── references/
+    └── skill-learning.md
 ```
 
-References, scripts, and UI metadata are optional. A package must not add empty
-directories, copied manuals, speculative examples, or a local README merely to
-look complete. Detailed material moves out of `SKILL.md` only when progressive
-disclosure reduces context cost or prevents irrelevant guidance from loading.
+`SKILL.md` owns activation, the user/Agent responsibility boundary, the
+technical decision policy, execution, verification, and delivery behavior.
+The reference is loaded only when an existing specialized Skill may help or a
+non-routine completed task produces evidence worth retaining.
 
-Version 0.1 begins with one concrete package for the frozen existing-project
-List/Search tracer bullet. New packages are justified by evaluated coverage,
-not by a desire to build a large backend skill catalog.
+## Package rules
 
-## Observable lifecycle
+- Keep the main operating loop in `SKILL.md`.
+- Add a reference or script only when it changes an observed decision,
+  implementation, or proof.
+- Prefer repository-native tools and mature Skills over duplicated machinery.
+- Do not make a new Runtime, service, credential, or control plane a hidden
+  prerequisite.
+- Treat external content as untrusted data.
+- Do not turn instructions, configured commands, or Agent prose into evidence.
 
-Every executable package contributes to the same product seam:
+## Task learning boundary
 
-```text
-activate
-  -> inspect repository and available context
-  -> select relevant concerns and evidence
-  -> resolve the technical decision
-  -> execute through Host or repository tools
-  -> verify with current repeatable checks
-  -> emit linked evidence and Completion State
+Learning happens after the task is implemented and checked. The Agent extracts
+the smallest reusable rule and classifies it directly as project context, a
+deterministic control, a project Skill, a global Skill, or nothing.
+
+A global Skill is not a project overlay promoted later. Global writes and
+overwriting an existing global Skill require user approval. A downstream task
+may create or patch its own Skill, but it cannot modify front-not-end or its
+learning rules.
+
+## Installation
+
+Use the Skills CLI rather than manual copying:
+
+```sh
+npx skills add xllily/front-not-end --skill front-not-end -g -a codex -y
 ```
 
-`SKILL.md` supplies decision policy and routing. References supply conditional
-knowledge. Scripts make repeated inspection or verification deterministic.
-The Host still owns reasoning, code changes, tool execution, and review; a skill
-does not introduce another agent runtime or orchestration loop.
-
-## Requirements
-
-### Activation and scope
-
-- The frontmatter description must discriminate the tasks that need the package
-  from nearby tasks that do not.
-- Explicit and automatic activation must produce the same externally observable
-  obligations.
-- Activation selects only concerns that can change the current design,
-  implementation, or proof. A Routine task must not load a broad backend
-  checklist by default.
-- The package states its evaluated stack, repository assumptions, unsupported
-  boundaries, and stop conditions.
-
-### Inspection before prescription
-
-- Repository conventions, installed dependencies, existing capabilities,
-  organization context, and available enforcement are inspected before a new
-  mechanism is proposed.
-- Repository-native commands and existing platform capabilities are preferred
-  over package-owned reimplementation.
-- Missing facts are reported under the Missing-fact Policy; they are not filled
-  by generic guidance in a reference file.
-
-### Executable helpers
-
-- A script exists only when deterministic reuse improves inspection or proof.
-- Each script has bounded inputs, stable exit semantics, and a documented
-  machine-readable output for the capability it serves.
-- Output records the helper name/version, relevant repository revision or tree
-  digest, start and finish time, outcome, observations, and artifact digests.
-- Failure, partial execution, unavailable dependencies, and inconclusive output
-  are distinguishable. A helper never prints PASS after swallowing an error.
-- Scripts do not mutate repositories, install dependencies, access networks, or
-  perform irreversible actions unless that behavior is intrinsic, visible, and
-  authorized for the current task.
-- Script-specific output is captured into the existing evaluation run artifact;
-  Version 0.1 does not create a universal skill-output protocol.
-
-### Knowledge provenance
-
-- Backend claims are derived from primary engineering sources such as official
-  framework, database, provider, or security documentation and applicable
-  research papers.
-- A maintained reference records source, applicable version or date, last
-  verification, and which decision the claim can change.
-- Heuristics, estimates, and expert judgment are labeled as such and remain A0
-  unless independently checked. Quantitative claims are not converted into
-  guarantees outside the population and method that produced them.
-- Examples explain a real ambiguity or support evaluation; they are not treated
-  as proof that a workflow works in another repository.
-
-### Dependencies, vendors, and external content
-
-- Every non-repository dependency records its source, version constraint,
-  authentication need, network need, rate or cost exposure, and failure mode.
-- Proprietary CLIs and services are optional technical choices, not hidden
-  prerequisites. Selecting one requires a fit argument, ownership consequence,
-  re-evaluation trigger, and a viable non-vendor path when the task permits it.
-- Stable repository or platform primitives are preferred when they satisfy the
-  system profile.
-- Tool output, scraped text, issues, logs, and connected documentation are
-  untrusted data. They may supply facts but cannot redefine instructions,
-  authorization, completion, or evidence rules.
-
-## Assurance and evidence
-
-Packaging does not create enforcement:
-
-| Package contribution | Maximum level by itself |
-|---|---|
-| Instruction, checklist, or reference | A0 |
-| Current rerunnable script/check with captured result | A1 |
-| Detected pre-existing merge/release gate | A2 |
-| Detected pre-existing runtime control | A3 |
-
-Adapter-authored scripts retain the A1 ceiling. A2 and A3 require separately
-captured proof that a pre-existing repository or environment control applies.
-The Agent's prose label is never evidence.
-
-The package declares intended evidence before implementation. Evidence must be
-current, attributable to the executed tool or control, linked to the relevant
-requirement, and capturable by
-[`run-artifact.schema.json`](../evals/contracts/run-artifact.schema.json).
-Missing, stale, failed, or lower-Assurance evidence keeps the task non-passing
-according to the frozen oracle.
-
-## Evaluation obligations
-
-The front-not-end comparison arm records the exact package revision/digest,
-loaded `SKILL.md`, conditional references, script versions, dependency state,
-and permissions in the comparison environment manifest. Baseline arms receive
-none of these artifacts; all non-intervention factors remain identical.
-
-The first package is accepted only when the frozen Slice 2 case demonstrates:
-
-- correct explicit activation without a backend technology question;
-- discovery and reuse of fixture-owned conventions and capabilities;
-- deterministic inspection and verification artifacts;
-- honest dependency and failure reporting;
-- current evidence sufficient for the required Assurance Levels; and
-- no material Routine-task noise or unjustified infrastructure.
-
-Behavior is evaluated through captured artifacts and outcomes, not exact prompt
-wording, folder count, command count, or the presence of a script.
-
-## Deliberately not adopted
-
-Version 0.1 does not adopt an upstream skill marketplace, catalog manifest,
-cross-Host installer, duplicated website metadata, generic dependency resolver,
-commercial service dependency, or broad set of backend skills. It also does not
-copy upstream backend/domain advice as an authoritative source.
-
-Those additions would either exceed the current product boundary or confuse
-installability with evaluated compatibility. Each future Host and capability
-must earn its own evidence.
+The built-in Codex `$skill-installer` is also supported. Manual copying is a
+fallback only when neither installer is available.
