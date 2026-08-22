@@ -45,8 +45,8 @@ system.
 
 ## Version 0.1 boundary
 
-Version 0.1 contains one installable Codex Skill and one existing-project
-List/Search tracer. It does not claim:
+Version 0.1 contains one installable Codex Skill and two existing-project
+tracers: List/Search reuse and authorized project creation. It does not claim:
 
 - another Host or a new Agent Runtime;
 - broad language, framework, database, or infrastructure coverage;

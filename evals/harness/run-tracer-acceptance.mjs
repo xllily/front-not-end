@@ -6,13 +6,41 @@ import { promisify } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const execFile = promisify(execFileCallback);
-const acceptanceRoot = fileURLToPath(
-  new URL("../fixtures/existing-list-search-reuse/acceptance/", import.meta.url),
-);
-const acceptanceTestPath = path.join(acceptanceRoot, "list-projects.test.mjs");
+const defaultCaseName = "existing-list-search-reuse";
+const acceptanceCases = new Map([
+  [
+    defaultCaseName,
+    {
+      root: fileURLToPath(
+        new URL("../fixtures/existing-list-search-reuse/acceptance/", import.meta.url),
+      ),
+      testFile: "list-projects.test.mjs",
+    },
+  ],
+  [
+    "project-create-authorization",
+    {
+      root: fileURLToPath(
+        new URL("../fixtures/project-create-authorization/acceptance/", import.meta.url),
+      ),
+      testFile: "create-projects.test.mjs",
+    },
+  ],
+]);
+
+function resolveAcceptanceCase(caseName) {
+  const acceptanceCase = acceptanceCases.get(caseName);
+  if (!acceptanceCase) {
+    throw new TypeError(
+      `Unknown tracer case: ${caseName}. Supported cases: ${[...acceptanceCases.keys()].join(", ")}`,
+    );
+  }
+  return acceptanceCase;
+}
 
 export async function runTracerAcceptance({
   workspace,
+  caseName = defaultCaseName,
   timeoutMs = 15_000,
   inheritedEnvironment = process.env,
 }) {
@@ -26,6 +54,8 @@ export async function runTracerAcceptance({
     throw new TypeError("The tracer workspace must be a directory");
   }
 
+  const acceptanceCase = resolveAcceptanceCase(caseName);
+  const acceptanceTestPath = path.join(acceptanceCase.root, acceptanceCase.testFile);
   const environment = {
     FRONT_NOT_END_WORKSPACE: resolvedWorkspace,
     LANG: inheritedEnvironment.LANG ?? "C",
@@ -37,7 +67,7 @@ export async function runTracerAcceptance({
     [
       "--permission",
       `--allow-fs-read=${resolvedWorkspace}`,
-      `--allow-fs-read=${acceptanceRoot}`,
+      `--allow-fs-read=${acceptanceCase.root}`,
       acceptanceTestPath,
     ],
     {
@@ -55,15 +85,28 @@ export async function runTracerAcceptance({
 function parseWorkspaceArgument(argv) {
   const index = argv.indexOf("--workspace");
   if (index === -1 || !argv[index + 1]) {
-    throw new TypeError("usage: run-tracer-acceptance.mjs --workspace <path>");
+    throw new TypeError(
+      "usage: run-tracer-acceptance.mjs --workspace <path> [--case <name>]",
+    );
+  }
+  return argv[index + 1];
+}
+
+function parseCaseArgument(argv) {
+  const index = argv.indexOf("--case");
+  if (index === -1) return defaultCaseName;
+  if (!argv[index + 1]) {
+    throw new TypeError("--case requires a tracer case name");
   }
   return argv[index + 1];
 }
 
 async function main() {
   try {
+    const argv = process.argv.slice(2);
     const result = await runTracerAcceptance({
-      workspace: parseWorkspaceArgument(process.argv.slice(2)),
+      workspace: parseWorkspaceArgument(argv),
+      caseName: parseCaseArgument(argv),
     });
     process.stdout.write(result.stdout);
     process.stderr.write(result.stderr);

@@ -29,8 +29,8 @@ scope before adding files or abstractions.
 ## Project Structure & Module Organization
 
 - `skills/front-not-end/` contains the installable skill. Keep the main workflow in `SKILL.md` and supporting guidance in `references/`.
-- `evals/cases/development/existing-list-search-reuse/` contains the active Agent-visible product request and organization context.
-- `evals/fixtures/existing-list-search-reuse/` contains the active seed repository and control-side acceptance test.
+- `evals/cases/development/` contains Agent-visible product requests and organization context for each active tracer.
+- `evals/fixtures/` contains each tracer's seed repository and control-side acceptance test.
 - `evals/harness/` contains the restricted acceptance runner and its colocated `*.test.mjs` coverage.
 - `docs/` explains current product behavior, architecture, and executable verification. Update it when a change alters a documented contract.
 

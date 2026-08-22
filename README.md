@@ -53,20 +53,26 @@ of this scenario; front-not-end does not assume every admin system is
 multi-tenant. A single-organization application should activate only its real
 authentication, role, and data-access boundaries.
 
-## Runnable tracer
+## Runnable tracers
 
-The repository ships one existing-project List/Search scenario. It checks
-whether the Skill leads the Agent from a product request to a repository-fit
-implementation that reuses an existing scoped pagination capability.
+The repository ships two existing-project scenarios:
+
+- `existing-list-search-reuse` checks scoped search and stable pagination; and
+- `project-create-authorization` checks an authorized, workspace-scoped,
+  idempotent mutation with no unauthorized side effect.
+
+Both check whether the Skill leads the Agent from a product request to a
+repository-fit implementation that reuses an existing platform capability.
 
 Prepare a fresh workspace:
 
 ```sh
 export FNE_REPO=/path/to/front-not-end
 export FNE_WORKSPACE="$(mktemp -d)"
-cp -R "$FNE_REPO/evals/fixtures/existing-list-search-reuse/seed/." "$FNE_WORKSPACE"
-cp "$FNE_REPO/evals/cases/development/existing-list-search-reuse/task.md" "$FNE_WORKSPACE/PRODUCT_REQUEST.md"
-cp "$FNE_REPO/evals/cases/development/existing-list-search-reuse/organization-context.md" "$FNE_WORKSPACE/ORGANIZATION_CONTEXT.md"
+export FNE_CASE=project-create-authorization
+cp -R "$FNE_REPO/evals/fixtures/$FNE_CASE/seed/." "$FNE_WORKSPACE"
+cp "$FNE_REPO/evals/cases/development/$FNE_CASE/task.md" "$FNE_WORKSPACE/PRODUCT_REQUEST.md"
+cp "$FNE_REPO/evals/cases/development/$FNE_CASE/organization-context.md" "$FNE_WORKSPACE/ORGANIZATION_CONTEXT.md"
 cd "$FNE_WORKSPACE"
 ```
 
@@ -81,25 +87,27 @@ After the Agent finishes:
 
 ```sh
 npm test
-node "$FNE_REPO/evals/harness/run-tracer-acceptance.mjs" --workspace "$PWD"
+node "$FNE_REPO/evals/harness/run-tracer-acceptance.mjs" --workspace "$PWD" --case "$FNE_CASE"
 ```
 
 The acceptance runner starts a separate Node process with a scrubbed
 environment, read access limited to the completed workspace and acceptance
-test, no filesystem write permission, and a timeout. It verifies two
-consecutive pages, request-context scope, input bounds, actual use of the
-existing query path, unchanged project details, and no added dependency.
+test, no filesystem write permission, and a timeout. Depending on the selected
+case, it verifies stable pages or authorized duplicate-safe creation, plus
+request-context scope, input bounds, actual use of the existing platform path,
+unchanged project details, and no added dependency.
 
 ## Current boundary
 
-The current product is the Skill plus this one runnable tracer. It does not yet
-claim broad stack, Host, or backend-scenario coverage. New abstractions and
-additional cases are added only after repeated real product runs expose the
-same missing behavior.
+The current product is the Skill plus these two runnable tracers. It does not
+yet claim broad stack, Host, or backend-scenario coverage. New abstractions are
+added only after repeated real product runs expose the same missing behavior.
 
-One real Codex development comparison is recorded: bare Codex passed its own
-tests but failed the control contract, while the front-not-end arm passed both.
-This is one-run product evidence, not a statistical benchmark.
+One real Codex development comparison is recorded for List/Search: bare Codex
+passed its own tests but failed the control contract, while the front-not-end
+arm passed both. The mutation/authorization tracer has one passing
+front-not-end run without a bare comparison. These are development evidence,
+not a statistical benchmark.
 
 - [Product contract](docs/product-contract.md)
 - [Architecture](docs/architecture.md)

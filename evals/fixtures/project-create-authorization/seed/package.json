@@ -1,0 +1,8 @@
+{
+  "name": "project-create-authorization-tracer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

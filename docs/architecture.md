@@ -27,17 +27,22 @@ responsibility boundary and operating loop. Its conditional
 reference lets the Agent reuse an existing Skill or persist task learning only
 when real evidence justifies it.
 
-### List/Search tracer
+### Product tracers
 
-The single tracer contains:
+Each tracer contains:
 
 - a product request and the organization context available to the Agent;
-- a small Node.js repository with an existing scoped pagination capability;
+- a small Node.js repository with an existing platform capability;
 - repository-native tests; and
 - a control-side behavioral acceptance test.
 
-Workspace isolation is a fact of this fixture, not a default architecture for
-other products.
+The List/Search tracer proves reuse of scoped pagination and preservation of
+its opaque cursor contract. The project-creation tracer proves reuse of an
+authorized, workspace-scoped, idempotent mutation with no unauthorized
+repository side effect.
+
+Workspace isolation and `project:create` are facts of these fixtures, not
+default architecture or authorization policy for other products.
 
 Existing tested behavior and public shapes are compatibility contracts. The
 Agent keeps a capability unchanged unless an executable failing example proves
@@ -46,13 +51,14 @@ that the product request cannot fit it.
 ### Restricted acceptance runner
 
 [`run-tracer-acceptance.mjs`](../evals/harness/run-tracer-acceptance.mjs)
-executes completed Agent code in a separate Node process. The child receives a
-scrubbed environment, read access only to the completed workspace and
+executes completed Agent code in a separate Node process. A fixed case
+allowlist selects the acceptance test. The child receives a scrubbed
+environment, read access only to the completed workspace and selected
 acceptance test, no filesystem write permission, and a timeout.
 
-The behavioral test checks two actual pages and observes that repository access
-passes through the existing query helper. It does not trust source wording,
-comments, or an unused import.
+The behavioral tests observe actual paging or mutation results and verify that
+repository access passes through the relevant existing platform helper. They
+do not trust source wording, comments, or an unused import.
 
 ## Growth rule
 

@@ -1,15 +1,15 @@
 # Product Tracer
 
-This directory contains the single runnable product tracer for Version 0.1:
+This directory contains two runnable product tracers for Version 0.1:
 
 ```text
 evals/
-├── cases/development/existing-list-search-reuse/
-│   ├── task.md
-│   └── organization-context.md
-├── fixtures/existing-list-search-reuse/
-│   ├── seed/
-│   └── acceptance/list-projects.test.mjs
+├── cases/development/
+│   ├── existing-list-search-reuse/
+│   └── project-create-authorization/
+├── fixtures/
+│   ├── existing-list-search-reuse/
+│   └── project-create-authorization/
 └── harness/
     └── run-tracer-acceptance.mjs
 ```

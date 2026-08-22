@@ -48,17 +48,20 @@ $skill-installer 安装 https://github.com/xllily/front-not-end/tree/master/skil
 
 ## 可运行 Tracer
 
-仓库只保留一个现有项目的 List/Search 场景，用来验证 Skill 能否把纯产品需求
-转化为贴合仓库的实现，并复用已有的范围化分页能力。
+仓库包含两个现有项目场景：`existing-list-search-reuse` 验证范围化搜索与稳定分页；
+`project-create-authorization` 验证有权限、按工作区隔离、可安全重试且未授权时无副作用
+的创建操作。两者都验证 Skill 能否把纯产品需求转化为贴合仓库、复用现有平台能力的
+实现。
 
 准备干净工作区：
 
 ```sh
 export FNE_REPO=/path/to/front-not-end
 export FNE_WORKSPACE="$(mktemp -d)"
-cp -R "$FNE_REPO/evals/fixtures/existing-list-search-reuse/seed/." "$FNE_WORKSPACE"
-cp "$FNE_REPO/evals/cases/development/existing-list-search-reuse/task.md" "$FNE_WORKSPACE/PRODUCT_REQUEST.md"
-cp "$FNE_REPO/evals/cases/development/existing-list-search-reuse/organization-context.md" "$FNE_WORKSPACE/ORGANIZATION_CONTEXT.md"
+export FNE_CASE=project-create-authorization
+cp -R "$FNE_REPO/evals/fixtures/$FNE_CASE/seed/." "$FNE_WORKSPACE"
+cp "$FNE_REPO/evals/cases/development/$FNE_CASE/task.md" "$FNE_WORKSPACE/PRODUCT_REQUEST.md"
+cp "$FNE_REPO/evals/cases/development/$FNE_CASE/organization-context.md" "$FNE_WORKSPACE/ORGANIZATION_CONTEXT.md"
 cd "$FNE_WORKSPACE"
 ```
 
@@ -73,22 +76,23 @@ Agent 完成后运行：
 
 ```sh
 npm test
-node "$FNE_REPO/evals/harness/run-tracer-acceptance.mjs" --workspace "$PWD"
+node "$FNE_REPO/evals/harness/run-tracer-acceptance.mjs" --workspace "$PWD" --case "$FNE_CASE"
 ```
 
 验收器会在独立 Node 进程中执行 Agent 产物：环境变量使用白名单，文件读取只允许
-完成后的工作区和验收文件，不授予文件写权限，并设置超时。它验证连续两页无遗漏
-或重复、请求上下文范围、输入边界、真实经过现有查询能力、项目详情不回归，以及
-没有新增依赖。
+完成后的工作区和验收文件，不授予文件写权限，并设置超时。根据所选 case，它验证
+稳定分页或有权限且可安全重试的创建操作，并共同验证请求上下文范围、输入边界、
+真实经过现有平台能力、项目详情不回归，以及没有新增依赖。
 
 ## 当前边界
 
-当前产品只有一个 Skill 和这一条可运行 Tracer。它还不能证明对所有技术栈、
+当前产品只有一个 Skill 和两条可运行 Tracer。它还不能证明对所有技术栈、
 所有 Host 或所有后端场景都有效。只有多个真实产品任务重复暴露同一缺口时，才增加
-通用抽象或更多场景。
+通用抽象。
 
-仓库已经记录一次真实 Codex 开发对照：bare Codex 通过了自己的测试，但没有通过
-控制侧契约；front-not-end arm 同时通过两者。这是单次产品证据，不是统计性评测。
+仓库已经记录一次 List/Search 的真实 Codex 开发对照：bare Codex 通过了自己的测试，
+但没有通过控制侧契约；front-not-end arm 同时通过两者。Mutation/authorization 还记录
+了一次通过的 front-not-end 运行，但没有 bare 对照。这些是开发证据，不是统计性评测。
 
 - [产品契约](docs/product-contract.md)
 - [架构](docs/architecture.md)

@@ -10,6 +10,9 @@ import { runTracerAcceptance } from "./run-tracer-acceptance.mjs";
 const fixtureRoot = fileURLToPath(
   new URL("../fixtures/existing-list-search-reuse/seed/", import.meta.url),
 );
+const projectCreateFixtureRoot = fileURLToPath(
+  new URL("../fixtures/project-create-authorization/seed/", import.meta.url),
+);
 const workspaces = [];
 
 async function createWorkspace() {
@@ -65,6 +68,110 @@ export class ProjectService {
   await writeFile(path.join(workspace, "src", "project-service.mjs"), source);
 }
 
+async function createProjectCreateWorkspace() {
+  const workspace = await mkdtemp(path.join(tmpdir(), "front-not-end-project-create-tracer-"));
+  workspaces.push(workspace);
+  await cp(projectCreateFixtureRoot, workspace, { recursive: true });
+  return workspace;
+}
+
+async function installSolvedProjectCreateService(workspace) {
+  const source = `import { createProject as createPlatformProject } from "./platform-create-project.mjs";
+
+export class ProjectService {
+  constructor({ projects, requestContext }) {
+    this.projects = projects;
+    this.requestContext = requestContext;
+  }
+
+  async getProject(projectId) {
+    return this.projects.findById(this.requestContext.tenantId, projectId);
+  }
+
+  createProject(input) {
+    return createPlatformProject(this.projects, this.requestContext, input);
+  }
+}
+`;
+  await writeFile(path.join(workspace, "src", "project-service.mjs"), source);
+}
+
+async function installAsyncSolvedProjectCreateService(workspace) {
+  const source = `import { createProject as createPlatformProject } from "./platform-create-project.mjs";
+
+export class ProjectService {
+  constructor({ projects, requestContext }) {
+    this.projects = projects;
+    this.requestContext = requestContext;
+  }
+
+  async getProject(projectId) {
+    return this.projects.findById(this.requestContext.tenantId, projectId);
+  }
+
+  async createProject(input) {
+    return createPlatformProject(this.projects, this.requestContext, input);
+  }
+}
+`;
+  await writeFile(path.join(workspace, "src", "project-service.mjs"), source);
+}
+
+async function installCollapsingOperationProjectCreateService(workspace) {
+  const source = `import { createProject as createPlatformProject } from "./platform-create-project.mjs";
+
+export class ProjectService {
+  constructor({ projects, requestContext }) {
+    this.projects = projects;
+    this.requestContext = requestContext;
+  }
+
+  async getProject(projectId) {
+    return this.projects.findById(this.requestContext.tenantId, projectId);
+  }
+
+  createProject(input) {
+    const operationId =
+      typeof input?.operationId === "string" &&
+      input.operationId.length >= 1 &&
+      input.operationId.length <= 128
+        ? "operation-1"
+        : input?.operationId;
+    return createPlatformProject(this.projects, this.requestContext, {
+      ...input,
+      operationId,
+    });
+  }
+}
+`;
+  await writeFile(path.join(workspace, "src", "project-service.mjs"), source);
+}
+
+async function installHardCodedWorkspaceProjectCreateService(workspace) {
+  const source = `import { createProject as createPlatformProject } from "./platform-create-project.mjs";
+
+export class ProjectService {
+  constructor({ projects, requestContext }) {
+    this.projects = projects;
+    this.requestContext = requestContext;
+  }
+
+  async getProject(projectId) {
+    return this.projects.findById(this.requestContext.tenantId, projectId);
+  }
+
+  createProject(input) {
+    return createPlatformProject(
+      this.projects,
+      { ...this.requestContext, tenantId: "workspace-1" },
+      input,
+    );
+  }
+}
+`;
+  await writeFile(path.join(workspace, "src", "project-service.mjs"), source);
+}
+
 afterEach(async () => {
   await Promise.all(
     workspaces.splice(0).map((workspace) => rm(workspace, { recursive: true, force: true })),
@@ -88,6 +195,81 @@ test("rejects the unchanged seed", async () => {
     runTracerAcceptance({ workspace }),
     (error) =>
       error.code === 1 && /listProjects/u.test(`${error.stdout}\n${error.stderr}`),
+  );
+});
+
+test("accepts a project create solution that reuses authorization and idempotency", async () => {
+  const workspace = await createProjectCreateWorkspace();
+  await installSolvedProjectCreateService(workspace);
+
+  const result = await runTracerAcceptance({
+    workspace,
+    caseName: "project-create-authorization",
+  });
+
+  assert.match(result.stdout, /authorized duplicate submissions/u);
+  assert.doesNotMatch(result.stdout, /not ok/u);
+});
+
+test("accepts an async project create service", async () => {
+  const workspace = await createProjectCreateWorkspace();
+  await installAsyncSolvedProjectCreateService(workspace);
+
+  const result = await runTracerAcceptance({
+    workspace,
+    caseName: "project-create-authorization",
+  });
+
+  assert.match(result.stdout, /authorized duplicate submissions/u);
+  assert.doesNotMatch(result.stdout, /not ok/u);
+});
+
+test("rejects a service that collapses distinct operation identifiers", async () => {
+  const workspace = await createProjectCreateWorkspace();
+  await installCollapsingOperationProjectCreateService(workspace);
+
+  await assert.rejects(
+    runTracerAcceptance({
+      workspace,
+      caseName: "project-create-authorization",
+    }),
+    (error) =>
+      error.code === 1 &&
+      /different operation identifiers/u.test(`${error.stdout}\n${error.stderr}`),
+  );
+});
+
+test("rejects a service that hard-codes the workspace", async () => {
+  const workspace = await createProjectCreateWorkspace();
+  await installHardCodedWorkspaceProjectCreateService(workspace);
+
+  await assert.rejects(
+    runTracerAcceptance({
+      workspace,
+      caseName: "project-create-authorization",
+    }),
+    (error) =>
+      error.code === 1 &&
+      /request context selects each workspace/u.test(`${error.stdout}\n${error.stderr}`),
+  );
+});
+
+test("rejects the unchanged project create seed", async () => {
+  const workspace = await createProjectCreateWorkspace();
+
+  await assert.rejects(
+    runTracerAcceptance({ workspace, caseName: "project-create-authorization" }),
+    (error) =>
+      error.code === 1 && /createProject/u.test(`${error.stdout}\n${error.stderr}`),
+  );
+});
+
+test("rejects tracer cases outside the acceptance allowlist", async () => {
+  const workspace = await createWorkspace();
+
+  await assert.rejects(
+    runTracerAcceptance({ workspace, caseName: "../../control" }),
+    /Unknown tracer case/u,
   );
 });
 
