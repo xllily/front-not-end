@@ -1,0 +1,8 @@
+{
+  "name": "front-not-end",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test evals/harness/*.test.mjs"
+  }
+}
