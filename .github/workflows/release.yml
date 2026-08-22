@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-candidate:
+    name: Verify release candidate
+    if: github.repository == 'xllily/front-not-end'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      archive: ${{ steps.package.outputs.archive }}
+
+    steps:
+      - name: Check out the tagged repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate the release tag and ancestry
+        id: release
+        shell: bash
+        run: |
+          release_tag=$GITHUB_REF_NAME
+
+          if [[ ! "$release_tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag must be SemVer, for example v1.2.0 or v1.2.0-rc.1; got $release_tag" >&2
+            exit 1
+          fi
+
+          if [[ "$(git cat-file -t "$GITHUB_REF")" != "tag" ]]; then
+            echo "Release tag $release_tag must be an annotated tag." >&2
+            exit 1
+          fi
+
+          release_commit=$(git rev-list -n 1 "$GITHUB_REF")
+          if ! git show-ref --verify --quiet refs/remotes/origin/master; then
+            echo "The checkout does not contain origin/master; release ancestry cannot be verified." >&2
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "$release_commit" refs/remotes/origin/master; then
+            echo "Release commit $release_commit is not contained in master." >&2
+            exit 1
+          fi
+
+          echo "commit=$release_commit" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run product harness tests
+        run: npm test
+
+      - name: Build and smoke-test the tagged Skill archive
+        id: package
+        env:
+          RELEASE_COMMIT: ${{ steps.release.outputs.commit }}
+        shell: bash
+        run: |
+          archive_path=$(bash .github/scripts/package-skill.sh "$GITHUB_REF_NAME" dist "$RELEASE_COMMIT")
+          echo "archive=$(basename "$archive_path")" >> "$GITHUB_OUTPUT"
+
+      - name: Retain the verified release candidate
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-${{ github.ref_name }}
+          path: |
+            dist/${{ steps.package.outputs.archive }}
+            dist/${{ steps.package.outputs.archive }}.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish GitHub Release
+    needs: release-candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download the verified release candidate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-${{ github.ref_name }}
+          path: dist
+
+      - name: Create the GitHub Release
+        env:
+          ARCHIVE: ${{ needs.release-candidate.outputs.archive }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          assets=("dist/$ARCHIVE" "dist/$ARCHIVE.sha256")
+
+          if existing_assets=$(gh release view "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json assets \
+            --jq '.assets[].name' 2>/dev/null); then
+            for asset in "${assets[@]}"; do
+              if ! grep -Fxq -- "$(basename "$asset")" <<< "$existing_assets"; then
+                echo "GitHub Release $RELEASE_TAG exists without $(basename "$asset")." >&2
+                echo "Do not mutate a published release; publish a corrective version." >&2
+                exit 1
+              fi
+            done
+
+            echo "GitHub Release $RELEASE_TAG already contains the verified assets."
+            exit 0
+          fi
+
+          prerelease_args=()
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            prerelease_args+=(--prerelease)
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --generate-notes \
+            --title "front-not-end $RELEASE_TAG" \
+            "${prerelease_args[@]}" \
+            "${assets[@]}"

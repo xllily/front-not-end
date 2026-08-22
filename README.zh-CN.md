@@ -1,45 +1,100 @@
 # front-not-end
 
-让 AI 编程 Agent 主动承担完整的后端工程。
+front-not-end 让具备前端经验的人只描述产品需求，由现有 Coding Agent
+负责后端技术完整性。
 
-现在，生成后端代码已经很容易。真正交付一个生产服务，还要处理架构、数据系统、中间件、云和平台能力、安全、监控、部署、恢复，以及企业已有的技术标准。前端开发者可以把产品讲清楚，却未必知道哪些后端问题应该进入讨论。
+它是一个可安装的 Agent Skill，不替代 Agent，也不创建新的 Runtime。Skill
+会要求 Agent 先检查仓库和可用的运行上下文，只激活与当前任务相关的后端问题，
+自主选择安全的技术方案，完成实现，并验证最终交付状态。
 
-front-not-end 是一个 backend agency activation adapter。它让 AI 编程 Agent 根据产品目标、负载、数据特点、约束和可获得的运行环境，先形成系统画像，再去相关的开发生态里寻找方案，完成选型、实现和验证。用户提供产品目标、业务事实，以及不可逆现实操作的许可。在已经验证的覆盖范围内，后端技术决策由 Agent 承担。
+用户负责产品意图、Agent 无法推断的事实、真实约束，以及不可逆或外部操作的授权。
+Agent 负责技术完整性。
 
-目标是交付一个具备生产形态的结果，而不只是写完 API、跑通 smoke test。后者只能证明一部分事实，无法单独证明系统符合部署环境、选对了数据路径、可以监控和恢复，也无法证明它遵循了企业约束。
+## 安装
 
-## 工作方式
+仓库发布后：
 
-```text
-产品目标 + 仓库 + 可获得的运行环境
-  -> 系统画像与相关工程面
-  -> 生态搜索与现有能力发现
-  -> 架构、技术栈、Risk Tier 与技术决策
-  -> 实现与复核
-  -> 检查与证据
-  -> IN_PROGRESS | PASS | FAIL | BLOCKED
+```sh
+npx skills add xllily/front-not-end --skill front-not-end -g -a codex -y
 ```
 
-## 首个版本
+从当前 checkout 安装：
 
-首个版本只评测 Codex、TypeScript、NestJS 和 PostgreSQL 这一条路径。这是评测边界，不是推荐技术栈。跨技术栈选型要等后续版本覆盖后才能声称已经验证。
+```sh
+npx skills add . --skill front-not-end -g -a codex -y
+```
 
-front-not-end 使用现有的 AI Coding Host，不替代它，也不增加另一套 Agent Runtime。它使用 Host 已有的模型、工具和仓库访问能力。
+也可以使用 Codex 内置安装器：
 
-v0.1 的评测结果只适用于 Codex。Claude Code 等其他 Host 需要单独验证。
+```text
+$skill-installer 安装 https://github.com/xllily/front-not-end/tree/master/skills/front-not-end
+```
 
-front-not-end 没有固定的技术菜单。零到一项目里，编程语言、框架、数据架构、运行方式，以及使用托管服务还是自行运维，都可以是技术决策。已有项目则要把当前技术栈和运维体系当作强约束，只有收益足以覆盖迁移和长期维护成本时才切换。如果更合适的方案超出已验证范围，就明确报告边界，不把参考技术栈硬套到项目上。
+安装后开启一个新的 Agent 任务。后端相关工作可以自动激活 Skill，也可以显式使用
+`$front-not-end`。
 
-只有当前任务的检查实际通过，才能报告 PASS。Prompt、旧测试结果和模型自述都不算证据。
+## 用产品语言提需求
 
-## 文档
+例如：
+
+> 项目列表页只显示当前登录用户所在工作区的项目，支持关键词搜索和“加载更多”；
+> 已有项目详情功能不能受影响。
+
+用户不需要指定 cursor、鉴权中间件、数据访问模式或测试方案。只要这些问题与当前
+项目有关，就由 Agent 主动发现并负责。
+
+这个例子明确存在工作区边界，所以需要范围隔离；front-not-end 不会假设每个后台
+系统都是多租户。单组织后台只应激活它真实存在的登录、角色和数据访问边界。
+
+## 可运行 Tracer
+
+仓库只保留一个现有项目的 List/Search 场景，用来验证 Skill 能否把纯产品需求
+转化为贴合仓库的实现，并复用已有的范围化分页能力。
+
+准备干净工作区：
+
+```sh
+export FNE_REPO=/path/to/front-not-end
+export FNE_WORKSPACE="$(mktemp -d)"
+cp -R "$FNE_REPO/evals/fixtures/existing-list-search-reuse/seed/." "$FNE_WORKSPACE"
+cp "$FNE_REPO/evals/cases/development/existing-list-search-reuse/task.md" "$FNE_WORKSPACE/PRODUCT_REQUEST.md"
+cp "$FNE_REPO/evals/cases/development/existing-list-search-reuse/organization-context.md" "$FNE_WORKSPACE/ORGANIZATION_CONTEXT.md"
+cd "$FNE_WORKSPACE"
+```
+
+在该目录启动 Codex，只输入：
+
+```text
+$front-not-end 完成 PRODUCT_REQUEST.md 中的产品需求。
+ORGANIZATION_CONTEXT.md 是当前项目可用的组织上下文。
+```
+
+Agent 完成后运行：
+
+```sh
+npm test
+node "$FNE_REPO/evals/harness/run-tracer-acceptance.mjs" --workspace "$PWD"
+```
+
+验收器会在独立 Node 进程中执行 Agent 产物：环境变量使用白名单，文件读取只允许
+完成后的工作区和验收文件，不授予文件写权限，并设置超时。它验证连续两页无遗漏
+或重复、请求上下文范围、输入边界、真实经过现有查询能力、项目详情不回归，以及
+没有新增依赖。
+
+## 当前边界
+
+当前产品只有一个 Skill 和这一条可运行 Tracer。它还不能证明对所有技术栈、
+所有 Host 或所有后端场景都有效。只有多个真实产品任务重复暴露同一缺口时，才增加
+通用抽象或更多场景。
+
+仓库已经记录一次真实 Codex 开发对照：bare Codex 通过了自己的测试，但没有通过
+控制侧契约；front-not-end arm 同时通过两者。这是单次产品证据，不是统计性评测。
 
 - [产品契约](docs/product-contract.md)
 - [架构](docs/architecture.md)
-- [保证等级与完成语义](docs/assurance-and-completion.md)
-- [可执行 Skill 包](docs/executable-skill-packages.md)
-- [评测协议](docs/evaluation.md)
-- [评测工作区](evals/README.md)
+- [当前 Tracer 验证](docs/evaluation.md)
+- [实际 Tracer 结果](docs/tracer-result.md)
+- [Skill 包](docs/executable-skill-packages.md)
 - [English](README.md)
 
 ## 许可证

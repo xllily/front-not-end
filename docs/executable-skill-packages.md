@@ -46,3 +46,12 @@ npx skills add xllily/front-not-end --skill front-not-end -g -a codex -y
 
 The built-in Codex `$skill-installer` is also supported. Manual copying is a
 fallback only when neither installer is available.
+
+## Release artifact
+
+Every accepted SemVer tag produces a GitHub Release containing the standalone
+`front-not-end` Skill directory as a compressed archive and a SHA-256 checksum.
+The release workflow packages only committed files from the tagged Skill tree,
+checks the package boundary and required metadata, and publishes only after the
+repository test suite passes. See [Continuous Integration and
+Releases](automation.md) for the release contract.
