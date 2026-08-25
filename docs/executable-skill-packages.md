@@ -11,7 +11,8 @@ skills/front-not-end/
 
 `SKILL.md` owns activation, the user/Agent responsibility boundary, the
 technical decision policy, execution, verification, and delivery behavior.
-The reference is loaded only when an existing specialized Skill may help or a
+The reference is loaded when a specialized capability could materially change
+the task, whether or not the Agent already knows a matching Skill, or when a
 non-routine completed task produces evidence worth retaining.
 
 ## Package rules

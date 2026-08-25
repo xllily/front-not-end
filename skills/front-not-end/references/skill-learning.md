@@ -6,25 +6,42 @@ global. A global Skill is not a project Skill promoted later.
 
 ## Reuse before creation
 
-1. Inspect the project's and Host's available Skills before implementing a
-   missing specialized capability. Prefer an exact, maintained fit over a new
-   local interpretation.
-2. If no local Skill fits and network use is allowed, search the ecosystem with
-   `npx skills find`. Inspect the source, maintenance, Host assumptions,
+1. Inspect all capabilities already available to the current task before
+   implementing a missing specialized capability: project Skills, user-level
+   Skills, Skills bundled with front-not-end, and Host, system, or plugin
+   Skills. Built-in capability is part of this first discovery pass, not a
+   fallback after an ecosystem search. Prefer an exact, maintained fit over a
+   new local interpretation.
+2. If no available Skill fits and network use is allowed, search the ecosystem
+   with `npx skills find`. Inspect the source, maintenance, Host assumptions,
    dependencies, and actual workflow; install count alone is not evidence of
-   fit.
-3. For one task, prefer temporary use with `npx skills use` without `--agent`,
-   then apply its generated prompt in the current Host; do not start a nested
-   coding Agent. When persistence is justified, use `npx skills add` instead of
-   manually copying files. A project install may proceed as a reversible
+   fit. A Skill reference is not proof that its companion Skill is installed.
+   Inspect named companions and keep only those whose absence would remove a
+   required design, execution, or verification result.
+3. Resolve that required dependency set before use. For one task, load each
+   selected Skill temporarily with `npx skills use` without `--agent`, then
+   apply its generated prompt in the current Host; do not start a nested coding
+   Agent. When persistence is justified, use `npx skills add` instead of
+   manually copying files. For one package, install the complete set in one
+   operation, such as `npx skills add <package> --skill primary companion-one
+   companion-two`. When Skills come from different sources, verify and install
+   each source independently. A project install may proceed as a reversible
    repository change when project policy allows it; a global install requires
-   user approval.
-4. Do not adopt an approximate Skill that introduces a new Agent Runtime,
+   user approval. Do not invent unsupported dependency metadata or treat a
+   partial installation as complete.
+4. If no suitable Skill remains after available-capability discovery and any
+   allowed ecosystem search, continue the task using repository-native tools,
+   evidence, and the Agent's base capability. A missing Skill is not a blocker
+   and is not by itself evidence that a new Skill should be created. Do not
+   create a Skill during implementation merely because the search found no
+   match; finish and prove the task before considering learning.
+5. Do not adopt an approximate Skill that introduces a new Agent Runtime,
    service, credential, or control plane merely to avoid implementing a small
    repository-fit solution.
 
-**Done when:** the selected Skill materially changes the current design,
-implementation, or proof, or you have established that reuse is not a fit.
+**Done when:** a selected Skill materially changes the current design,
+implementation, or proof, or you have established that reuse is not a fit and
+continued the task without treating that absence as a blocker.
 
 ## Learn after proof
 

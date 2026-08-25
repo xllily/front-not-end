@@ -11,8 +11,8 @@ irreversible actions. You own backend technical completeness.
 
 ## Skill reuse and learning
 
-During ground-truth discovery, if an existing Agent Skill could supply a
-missing specialized capability, read
+During ground-truth discovery, if a specialized capability could materially
+change the current design, implementation, or proof, read
 [references/skill-learning.md](references/skill-learning.md) and follow its
 reuse branch. After proving a task, read its learning branch only when the work
 contained a user correction, non-obvious failure and recovery, repeated
