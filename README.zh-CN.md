@@ -1,7 +1,7 @@
-# front-not-end
+# front-not-end — 为前端主导的产品需求补齐后端技术完整性
 
-front-not-end 让具备前端经验的人只描述产品需求，由现有 Coding Agent
-负责后端技术完整性。
+front-not-end 是一个采用 Apache-2.0 许可证、面向 Codex 的 Agent Skill。
+它让具备前端经验的人只描述产品需求，由 Coding Agent 负责可用于生产的后端实现。
 
 它是一个可安装的 Agent Skill，不替代 Agent，也不创建新的 Runtime。Skill
 会要求 Agent 先检查仓库和可用的运行上下文，只激活与当前任务相关的后端问题，
@@ -9,6 +9,14 @@ front-not-end 让具备前端经验的人只描述产品需求，由现有 Codin
 
 用户负责产品意图、Agent 无法推断的事实、真实约束，以及不可逆或外部操作的授权。
 Agent 负责技术完整性。
+
+当一个前端或产品需求涉及 API、服务端数据、登录鉴权、权限、持久化、后台任务、
+外部集成、部署或其他生产后端行为时，适合使用 front-not-end。Agent 的权威指令在
+[`skills/front-not-end/SKILL.md`](skills/front-not-end/SKILL.md)，简明的 Agent 可读入口
+在 [`llms.txt`](llms.txt)。
+
+**状态：** 实验性 `0.x`。当前证据覆盖两条可运行的 Codex Tracer，不代表已经覆盖
+所有技术栈、Agent Host 或后端场景。
 
 ## 安装
 

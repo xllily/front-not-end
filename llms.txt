@@ -1,0 +1,26 @@
+# front-not-end
+
+> front-not-end is an Apache-2.0 Agent Skill for Codex that helps frontend developers turn product requests into production-capable backend changes while preserving the target repository's existing contracts and conventions.
+
+Use this project when a frontend or product request creates or changes APIs, server-side data, authentication, permissions, persistence, background jobs, integrations, deployment, or other production backend behavior. The user owns product intent and authorization for irreversible or external actions; the Coding Agent owns backend technical completeness.
+
+Status: experimental 0.x. Current evidence covers two runnable Codex tracers, not every stack, Agent host, or backend scenario.
+
+## Start here
+
+- [Install and usage](https://github.com/xllily/front-not-end/blob/master/README.md): Human-readable overview, installation, example prompt, and runnable tracer instructions.
+- [Canonical Agent Skill](https://github.com/xllily/front-not-end/blob/master/skills/front-not-end/SKILL.md): Authoritative instructions that an Agent must follow. Prefer this file over summaries elsewhere.
+- [Product contract](https://github.com/xllily/front-not-end/blob/master/docs/product-contract.md): Current product promise, ownership boundary, and non-goals.
+- [Architecture](https://github.com/xllily/front-not-end/blob/master/docs/architecture.md): How the installable Skill, target repository, and verification evidence relate.
+
+## Evidence and limits
+
+- [Current tracer verification](https://github.com/xllily/front-not-end/blob/master/docs/evaluation.md): What the two runnable development tracers actually verify.
+- [Observed tracer result](https://github.com/xllily/front-not-end/blob/master/docs/tracer-result.md): Recorded development evidence and its limitations.
+- [Harness trust boundary](https://github.com/xllily/front-not-end/blob/master/evals/harness/README.md): Isolation guarantees, trusted components, and unsupported cases.
+- [Continuous integration and releases](https://github.com/xllily/front-not-end/blob/master/docs/automation.md): Automated checks and release behavior.
+
+## Optional
+
+- [Simplified Chinese overview](https://github.com/xllily/front-not-end/blob/master/README.zh-CN.md): Chinese installation and usage guide.
+- [Repository source](https://github.com/xllily/front-not-end): Canonical source repository.
