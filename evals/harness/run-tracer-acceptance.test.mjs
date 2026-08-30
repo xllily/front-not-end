@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { execFile as execFileCallback } from "node:child_process";
+import { cp, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 import { runTracerAcceptance } from "./run-tracer-acceptance.mjs";
+import { createTracerSnapshot } from "./tracer-sandbox.mjs";
 
+const execFile = promisify(execFileCallback);
 const fixtureRoot = fileURLToPath(
   new URL("../fixtures/existing-list-search-reuse/seed/", import.meta.url),
 );
@@ -65,6 +70,107 @@ export class ProjectService {
 }
 `;
   await writeFile(path.join(workspace, "src", "platform-query-page.mjs"), platformSource);
+  await writeFile(path.join(workspace, "src", "project-service.mjs"), source);
+}
+
+async function installAssertTamperingService(workspace) {
+  const source = `import agentAssert from "node:assert/strict";
+
+agentAssert.deepEqual = () => {};
+agentAssert.equal = () => {};
+agentAssert.match = () => {};
+agentAssert.rejects = async () => {};
+
+export class ProjectService {
+  async getProject() {
+    return { id: "wrong-project" };
+  }
+
+  async listProjects() {
+    return { items: [], nextCursor: null };
+  }
+}
+`;
+  await writeFile(path.join(workspace, "src", "project-service.mjs"), source);
+}
+
+async function installStackForgingListService(workspace) {
+  const source = `try {
+  Error.prepareStackTrace = () => "platform-query-page.mjs";
+} catch {}
+
+function decodeCursor(cursor) {
+  if (cursor == null) return null;
+  const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+  if (!Array.isArray(parsed) || parsed.length !== 2 || parsed.some((value) => typeof value !== "string")) {
+    throw new TypeError("Invalid cursor");
+  }
+  return { createdAt: parsed[0], id: parsed[1] };
+}
+
+export class ProjectService {
+  constructor({ projects, requestContext }) {
+    this.projects = projects;
+    this.requestContext = requestContext;
+  }
+
+  async getProject(projectId) {
+    return this.projects.findById(this.requestContext.tenantId, projectId);
+  }
+
+  async listProjects({ query = null, cursor = null, limit = 25 } = {}) {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new RangeError("Invalid page size");
+    const { items, next = null } = await this.projects.queryPage({
+      tenantId: this.requestContext.tenantId,
+      query,
+      after: decodeCursor(cursor),
+      limit,
+    });
+    const nextCursor = next == null
+      ? null
+      : Buffer.from(JSON.stringify([next.createdAt, next.id]), "utf8").toString("base64url");
+    return { items, nextCursor };
+  }
+}
+`;
+  await writeFile(path.join(workspace, "src", "project-service.mjs"), source);
+}
+
+async function installSourceUrlForgingProjectCreateService(workspace) {
+  const source = `function forbidden() {
+  const error = new Error("Project creation is not allowed");
+  error.code = "FORBIDDEN";
+  return error;
+}
+
+export class ProjectService {
+  constructor({ projects, requestContext }) {
+    this.projects = projects;
+    this.requestContext = requestContext;
+  }
+
+  async getProject(projectId) {
+    return this.projects.findById(this.requestContext.tenantId, projectId);
+  }
+
+  createProject({ name, operationId } = {}) {
+    if (!this.requestContext.permissions.includes("project:create")) throw forbidden();
+    if (typeof name !== "string" || name.trim().length < 1 || name.trim().length > 80) {
+      throw new RangeError("Invalid project name");
+    }
+    if (typeof operationId !== "string" || operationId.length < 1 || operationId.length > 128) {
+      throw new TypeError("Invalid operation identifier");
+    }
+    return this.projects.createOnce({
+      tenantId: this.requestContext.tenantId,
+      operationId,
+      name: name.trim(),
+    });
+  }
+}
+
+//# sourceURL=file:///workspace/src/platform-create-project.mjs
+`;
   await writeFile(path.join(workspace, "src", "project-service.mjs"), source);
 }
 
@@ -304,4 +410,294 @@ test("denies Agent-produced code access outside the completed workspace", async 
   } finally {
     await rm(outsidePath, { force: true });
   }
+});
+
+test("denies Agent-produced code access to host network services", async () => {
+  const workspace = await createWorkspace();
+  let requests = 0;
+  const server = createServer((_request, response) => {
+    requests += 1;
+    response.end("control-only");
+  });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+
+  try {
+    const { port } = server.address();
+    await installSolvedService(
+      workspace,
+      `await fetch("http://127.0.0.1:${port}/control-canary");\n`,
+    );
+
+    await assert.rejects(
+      runTracerAcceptance({ workspace }),
+      (error) => /fetch failed|ECONNREFUSED|ENETUNREACH|EPERM/u.test(
+        `${error.stdout ?? ""}\n${error.stderr ?? ""}`,
+      ),
+    );
+    assert.equal(requests, 0);
+  } finally {
+    await new Promise((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
+});
+
+test("rejects descendant symlinks before Agent-produced code starts", async () => {
+  const workspace = await createWorkspace();
+  const outsidePath = path.join(path.dirname(workspace), "front-not-end-symlink-canary.txt");
+  await writeFile(outsidePath, "control-only");
+  try {
+    await symlink(outsidePath, path.join(workspace, "src", "host-control-canary.txt"));
+    await installSolvedService(
+      workspace,
+      'import { readFileSync as readControlCanary } from "node:fs";\n' +
+        'readControlCanary(new URL("./host-control-canary.txt", import.meta.url), "utf8");\n',
+    );
+
+    await assert.rejects(
+      runTracerAcceptance({ workspace }),
+      /unsupported symbolic link/u,
+    );
+    assert.equal(await readFile(outsidePath, "utf8"), "control-only");
+  } finally {
+    await rm(outsidePath, { force: true });
+  }
+});
+
+test("rejects a zero exit before the control tests complete", async () => {
+  const workspace = await createWorkspace();
+  await installSolvedService(workspace, "process.exit(0);\n");
+
+  await assert.rejects(
+    runTracerAcceptance({ workspace }),
+    /did not complete all control tests/u,
+  );
+});
+
+test("rejects Agent-produced attempts to replace control assertions", async () => {
+  const workspace = await createWorkspace();
+  await installAssertTamperingService(workspace);
+
+  await assert.rejects(
+    runTracerAcceptance({ workspace }),
+    (error) => error.code !== 0 && /deepEqual|read only|not extensible/u.test(error.stderr),
+  );
+});
+
+test("rejects forged platform reuse through Error.prepareStackTrace", async () => {
+  const workspace = await createWorkspace();
+  await installStackForgingListService(workspace);
+
+  await assert.rejects(
+    runTracerAcceptance({ workspace }),
+    (error) => error.code === 1 && /runtime path proof/u.test(
+      `${error.stdout ?? ""}\n${error.stderr ?? ""}`,
+    ),
+  );
+});
+
+test("rejects forged platform reuse through a sourceURL", async () => {
+  const workspace = await createProjectCreateWorkspace();
+  await installSourceUrlForgingProjectCreateService(workspace);
+
+  await assert.rejects(
+    runTracerAcceptance({
+      workspace,
+      caseName: "project-create-authorization",
+    }),
+    (error) => error.code === 1 && /runtime path proof/u.test(
+      `${error.stdout ?? ""}\n${error.stderr ?? ""}`,
+    ),
+  );
+});
+
+test("keeps the completion challenge out of Agent-visible module identities", async () => {
+  const workspace = await createWorkspace();
+  await installSolvedService(
+    workspace,
+    `import { writeSync } from "node:fs";
+const resolvedHelperURL = import.meta.resolve("./platform-query-page.mjs");
+const leakedChallenge = resolvedHelperURL.match(/[0-9a-f]{64}/u)?.[0];
+if (!leakedChallenge) throw new Error("completion challenge unavailable");
+writeSync(1, \`\\nFRONT_NOT_END_ACCEPTANCE_COMPLETED \${leakedChallenge} 4\\n\`);
+process.exit(0);
+`,
+  );
+
+  await assert.rejects(
+    runTracerAcceptance({ workspace }),
+    (error) => {
+      assert.notEqual(error.code, 0);
+      assert.match(
+        `${error.stdout ?? ""}\n${error.stderr ?? ""}`,
+        /completion challenge unavailable/u,
+      );
+      return true;
+    },
+  );
+});
+
+test("blocks sensitive built-ins through non-workspace module relays", async () => {
+  const workspace = await createWorkspace();
+  await installSolvedService(
+    workspace,
+    `const relayURL = "data:text/javascript," + encodeURIComponent(
+  'export { registerHooks } from "node:module";',
+);
+await import(relayURL);
+throw new Error("module relay escaped");
+`,
+  );
+
+  await assert.rejects(
+    runTracerAcceptance({ workspace }),
+    (error) => {
+      assert.notEqual(error.code, 0);
+      assert.match(
+        `${error.stdout ?? ""}\n${error.stderr ?? ""}`,
+        /Agent modules cannot import node:module/u,
+      );
+      return true;
+    },
+  );
+});
+
+test("blocks ambient CommonJS access to the module hook API", async () => {
+  const workspace = await createWorkspace();
+  await writeFile(
+    path.join(workspace, "src", "module-relay.cjs"),
+    `if (typeof module.constructor.registerHooks === "function") {
+  throw new Error("CommonJS module hook escaped");
+}
+`,
+  );
+  await installSolvedService(workspace, 'await import("./module-relay.cjs");\n');
+
+  await assert.rejects(
+    runTracerAcceptance({ workspace }),
+    (error) => {
+      assert.notEqual(error.code, 0);
+      assert.match(
+        `${error.stdout ?? ""}\n${error.stderr ?? ""}`,
+        /Agent workspace cannot load CommonJS modules/u,
+      );
+      return true;
+    },
+  );
+});
+
+test("rejects excessive snapshot entries before sandbox execution", async () => {
+  const workspace = await createWorkspace();
+  await installSolvedService(workspace);
+  await Promise.all(Array.from(
+    { length: 513 },
+    (_value, index) => mkdir(path.join(workspace, "src", `empty-${index}`)),
+  ));
+
+  await assert.rejects(
+    runTracerAcceptance({ workspace }),
+    /excessive entry count/u,
+  );
+});
+
+test("makes snapshots readable by the fixed container user under a restrictive umask", async () => {
+  const workspace = await createWorkspace();
+  await installSolvedService(workspace);
+  const previousUmask = process.umask(0o077);
+  let snapshot;
+  try {
+    snapshot = await createTracerSnapshot({
+      controlEntries: [
+        "fixtures/existing-list-search-reuse/acceptance/list-projects.test.mjs",
+        "harness/runtime-call-proof.mjs",
+      ],
+      controlRoot: fileURLToPath(new URL("../", import.meta.url)),
+      workspace,
+    });
+
+    const pathsAndModes = [
+      [snapshot.workspace, 0o755],
+      [path.join(snapshot.workspace, "src"), 0o755],
+      [path.join(snapshot.workspace, "src", "project-service.mjs"), 0o444],
+      [path.join(snapshot.control, "fixtures"), 0o755],
+      [
+        path.join(
+          snapshot.control,
+          "fixtures/existing-list-search-reuse/acceptance/list-projects.test.mjs",
+        ),
+        0o444,
+      ],
+    ];
+    for (const [snapshotPath, expectedMode] of pathsAndModes) {
+      const info = await stat(snapshotPath);
+      assert.equal(info.mode & 0o777, expectedMode, snapshotPath);
+    }
+  } finally {
+    process.umask(previousUmask);
+    await snapshot?.dispose();
+  }
+});
+
+test("escapes terminal control sequences from Agent-produced output", async () => {
+  const workspace = await createWorkspace();
+  await installSolvedService(
+    workspace,
+    'process.stdout.write("\\u001b]52;c;dGVzdA==\\u0007\\u001b[2J\\runsafe\\b\\u009b");\n',
+  );
+
+  const result = await runTracerAcceptance({ workspace });
+
+  assert.doesNotMatch(result.stdout, /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/u);
+  assert.match(result.stdout, /\\u001b/u);
+});
+
+test("force-kills a sandbox that ignores graceful termination", async () => {
+  const workspace = await createWorkspace();
+  await installSolvedService(
+    workspace,
+    'process.on("SIGTERM", () => {});\n' +
+      'setInterval(() => {}, 1_000);\n' +
+      'await new Promise(() => {});\n',
+  );
+  const startedAt = Date.now();
+  let timeoutError;
+
+  await assert.rejects(
+    runTracerAcceptance({ workspace, timeoutMs: 250 }),
+    (error) => {
+      timeoutError = error;
+      return error.code === "ETIMEDOUT" && error.signal === "SIGKILL";
+    },
+  );
+
+  assert.ok(Date.now() - startedAt < 5_000);
+  assert.match(timeoutError.sandboxContainerId, /^[0-9a-f]{64}$/u);
+  const containers = await execFile(
+    "docker",
+    ["ps", "--all", "--quiet", "--filter", `id=${timeoutError.sandboxContainerId}`],
+    { encoding: "utf8" },
+  );
+  assert.equal(containers.stdout.trim(), "");
+});
+
+test("escapes control sequences in rejected case names", async () => {
+  const workspace = await createWorkspace();
+  let rejectedError;
+
+  await assert.rejects(
+    runTracerAcceptance({ workspace, caseName: "unknown\u001b[2J\r" }),
+    (error) => {
+      rejectedError = error;
+      return /Unknown tracer case/u.test(error.message);
+    },
+  );
+
+  assert.doesNotMatch(
+    rejectedError.message,
+    /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/u,
+  );
+  assert.match(rejectedError.message, /\\u001b/u);
 });

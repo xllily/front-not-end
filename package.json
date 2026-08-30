@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test evals/harness/*.test.mjs"
+    "test": "node --test evals/harness/*.test.mjs",
+    "tracer:pull-image": "node evals/harness/pull-tracer-image.mjs"
   }
 }

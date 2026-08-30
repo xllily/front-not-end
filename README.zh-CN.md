@@ -72,6 +72,12 @@ $front-not-end 完成 PRODUCT_REQUEST.md 中的产品需求。
 ORGANIZATION_CONTEXT.md 是当前项目可用的组织上下文。
 ```
 
+验收命令需要可用的 Docker 兼容运行时。首次运行前显式拉取固定摘要镜像：
+
+```sh
+npm run tracer:pull-image
+```
+
 Agent 完成后运行：
 
 ```sh
@@ -79,10 +85,17 @@ npm test
 node "$FNE_REPO/evals/harness/run-tracer-acceptance.mjs" --workspace "$PWD" --case "$FNE_CASE"
 ```
 
-验收器会在独立 Node 进程中执行 Agent 产物：环境变量使用白名单，文件读取只允许
-完成后的工作区和验收文件，不授予文件写权限，并设置超时。根据所选 case，它验证
-稳定分页或有权限且可安全重试的创建操作，并共同验证请求上下文范围、输入边界、
-真实经过现有平台能力、项目详情不回归，以及没有新增依赖。
+验收器只复制受限的普通文件快照，并在一次性非 root 容器中执行 Agent 产物：容器
+不能访问宿主机或外部网络，挂载只读，资源有上限，超时后由宿主机强制终止并清理；
+只有全部控制测试完成并返回匹配凭证才算通过。根据所选 case，它验证稳定分页或有
+权限且可安全重试的创建操作，并共同验证请求上下文范围、输入边界、真实经过现有
+平台能力、项目详情不回归，以及没有新增依赖。详见
+[Harness 安全边界](evals/harness/README.md)。
+
+Docker daemon、固定摘要镜像内容、宿主内核或 Docker Desktop 虚拟机，以及容器
+运行时仍属于受信任边界；镜像摘要只防止标签漂移，不代表镜像内容天然安全。
+当前 fixture 要求 workspace 使用原生 ESM；CommonJS 不在这两条 Tracer 的验收
+边界内。
 
 ## 当前边界
 

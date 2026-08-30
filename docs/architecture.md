@@ -51,10 +51,36 @@ that the product request cannot fit it.
 ### Restricted acceptance runner
 
 [`run-tracer-acceptance.mjs`](../evals/harness/run-tracer-acceptance.mjs)
-executes completed Agent code in a separate Node process. A fixed case
-allowlist selects the acceptance test. The child receives a scrubbed
-environment, read access only to the completed workspace and selected
-acceptance test, no filesystem write permission, and a timeout.
+executes completed Agent code in a disposable container. A fixed case allowlist
+selects the acceptance test. Before execution, the runner copies only regular,
+single-link `package.json` and `src/` files into a bounded snapshot; links,
+special files, nested filesystems, oversized inputs, and concurrent changes
+fail closed.
+
+The container uses a pinned multi-architecture Node image, no host or external
+network route, read-only snapshot and control mounts, a non-root user, dropped
+capabilities, `no-new-privileges`, and CPU, memory, PID, output, and wall-time
+limits for container execution. Node permissions still deny filesystem writes,
+child processes, and Workers inside that boundary. The host force-kills and
+removes the exact container on failure or timeout.
+
+Success also requires a challenge-bound receipt emitted only after every
+allowlisted control test completes. Agent output is not the verdict, and all
+returned terminal control characters are escaped.
+
+Runtime path evidence uses a control-owned module hook rather than stack text.
+The hook wraps the allowlisted platform export with a private per-run marker
+bound to the exact repository object; direct calls and forged stack/source
+labels fail closed. Frozen intrinsics protect the remaining control-side
+language primitives. Workspace CommonJS is rejected before execution so its
+ambient loader API cannot extend the control-owned module-hook chain; the
+current tracer fixtures use native ESM.
+
+This containment assumes trusted runner/control bytes, pinned image contents,
+Docker client and daemon, daemon-side host, host kernel or Docker Desktop VM,
+and container-runtime enforcement. The image digest prevents tag drift, not a
+malicious or vulnerable image; daemon compromise and container-runtime escape
+remain outside the Harness boundary.
 
 The behavioral tests observe actual paging or mutation results and verify that
 repository access passes through the relevant existing platform helper. They

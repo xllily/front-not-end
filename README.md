@@ -83,6 +83,13 @@ $front-not-end Implement the product request in PRODUCT_REQUEST.md.
 ORGANIZATION_CONTEXT.md is the available organization context for this project.
 ```
 
+The acceptance command requires a Docker-compatible daemon. Pull its pinned
+image explicitly before the first run:
+
+```sh
+npm run tracer:pull-image
+```
+
 After the Agent finishes:
 
 ```sh
@@ -90,12 +97,17 @@ npm test
 node "$FNE_REPO/evals/harness/run-tracer-acceptance.mjs" --workspace "$PWD" --case "$FNE_CASE"
 ```
 
-The acceptance runner starts a separate Node process with a scrubbed
-environment, read access limited to the completed workspace and acceptance
-test, no filesystem write permission, and a timeout. Depending on the selected
-case, it verifies stable pages or authorized duplicate-safe creation, plus
-request-context scope, input bounds, actual use of the existing platform path,
-unchanged project details, and no added dependency.
+The acceptance runner uses a sanitized read-only snapshot in a disposable,
+non-root container with no host or external network route, bounded resources,
+host-controlled container-execution timeout and cleanup, and a challenge-bound
+completion receipt. The Docker daemon, pinned image contents, host kernel or
+Docker Desktop VM, and container runtime remain trusted boundaries. Depending
+on the selected case, it verifies stable pages or
+authorized duplicate-safe creation, plus request-context scope, input bounds,
+actual use of the existing platform path, unchanged project details, and no
+added dependency. The current fixtures require native ESM workspace code;
+CommonJS is outside their acceptance boundary. See the
+[Harness boundary](evals/harness/README.md).
 
 ## Current boundary
 

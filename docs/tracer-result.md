@@ -32,7 +32,9 @@ not expose its exact model identifier, so this result does not support a formal
 or statistical benchmark claim. It does demonstrate one observable improvement
 on the current product slice.
 
-Reproduce the acceptance decision after each Agent run with:
+The command requires the pinned Docker image documented in
+[`evals/harness/README.md`](../evals/harness/README.md) to be present locally.
+Then reproduce the acceptance decision after each Agent run with:
 
 ```sh
 npm test

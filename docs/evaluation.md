@@ -66,10 +66,21 @@ The project-creation control-side acceptance verifies:
 - project details retain request-context scoping; and
 - no dependency was added.
 
-The acceptance test runs in a separate, permission-restricted Node process.
-Harness tests prove that both unchanged seeds fail, unknown case names are
-rejected, control environment secrets are not inherited, and Agent-produced
-code cannot read a control file outside the completed workspace.
+The acceptance test runs in a disposable, permission-restricted container
+against a bounded read-only snapshot. Harness tests prove that both unchanged
+seeds fail, unknown case names are rejected, control environment secrets are
+not inherited, and Agent-produced code cannot read a control file outside the
+completed workspace. Security regressions also prove that host-loopback
+connections receive no request, descendant links fail before execution, a
+premature zero exit cannot forge success, a signal-ignoring process is
+force-killed without a residual container, and terminal control sequences are
+escaped. They also prove that forged stack formatting or `sourceURL` labels
+cannot impersonate the allowlisted platform helper, that the completion
+challenge is absent from Agent-visible module identities, that ESM relays and
+workspace CommonJS cannot extend the control loader chain, that excessive
+snapshot entries fail before container execution, and that restrictive host
+`umask` values cannot make valid snapshots unreadable by the fixed container
+user.
 
 ## Current claim boundary
 
@@ -78,6 +89,14 @@ It does not prove that every project needs tenant isolation, that all backend
 concerns are covered, or that another Host behaves the same way. Comparative
 claims require a real bare-Agent run and a front-not-end run from the same seed
 and prompt.
+
+The result also depends on trusted runner/control bytes, pinned image contents,
+Docker daemon and daemon-side host, host kernel or Docker Desktop VM, and
+container-runtime enforcement. It is not evidence against a malicious daemon,
+image, kernel, or container escape.
+
+The current fixtures and runtime-path proof require native ESM workspace code;
+CommonJS workspace modules are outside this tracer contract.
 
 The recorded List/Search comparison and project-creation product run are in
 [`tracer-result.md`](tracer-result.md).

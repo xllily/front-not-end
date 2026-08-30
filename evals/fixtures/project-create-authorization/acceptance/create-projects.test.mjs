@@ -1,8 +1,33 @@
 import assert from "node:assert/strict";
+import { readFileSync, writeSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { pathToFileURL } from "node:url";
+
+import { installRuntimeCallProof } from "../../../harness/runtime-call-proof.mjs";
+
+Object.freeze(assert);
+const expectedControlTests = 7;
+const completionChallenge = readFileSync(0, "utf8").trim();
+if (!/^[0-9a-f]{64}$/u.test(completionChallenge)) {
+  throw new Error("A valid tracer completion challenge is required");
+}
+let completedControlTests = 0;
+function controlTest(name, callback) {
+  test(name, async (context) => {
+    await callback(context);
+    completedControlTests += 1;
+  });
+}
+after(() => {
+  if (completedControlTests === expectedControlTests) {
+    writeSync(
+      1,
+      `\nFRONT_NOT_END_ACCEPTANCE_COMPLETED ${completionChallenge} ${expectedControlTests}\n`,
+    );
+  }
+});
 
 const workspace = process.env.FRONT_NOT_END_WORKSPACE;
 if (!workspace) {
@@ -10,31 +35,38 @@ if (!workspace) {
 }
 
 const projectServicePath = path.join(workspace, "src", "project-service.mjs");
+const platformCreateProjectPath = path.join(workspace, "src", "platform-create-project.mjs");
 const packagePath = path.join(workspace, "package.json");
+const runtimeCallProof = await installRuntimeCallProof({
+  exportName: "createProject",
+  helperURL: pathToFileURL(platformCreateProjectPath),
+});
+after(() => runtimeCallProof.dispose());
 const { ProjectService } = await import(pathToFileURL(projectServicePath));
 
 function createRepository() {
   const calls = [];
   const records = new Map();
+  const repository = {
+    findById: async () => null,
+    createOnce: async (input) => {
+      runtimeCallProof.assertRepositoryCall(repository);
+      calls.push(input);
+      const key = `${input.tenantId}:${input.operationId}`;
+      if (!records.has(key)) {
+        records.set(key, { id: `project-${records.size + 1}`, ...input });
+      }
+      return records.get(key);
+    },
+  };
   return {
     calls,
     records,
-    repository: {
-      findById: async () => null,
-      createOnce: async (input) => {
-        assert.match(new Error().stack, /platform-create-project\.mjs/u);
-        calls.push(input);
-        const key = `${input.tenantId}:${input.operationId}`;
-        if (!records.has(key)) {
-          records.set(key, { id: `project-${records.size + 1}`, ...input });
-        }
-        return records.get(key);
-      },
-    },
+    repository,
   };
 }
 
-test("authorized duplicate submissions create one scoped project", async () => {
+controlTest("authorized duplicate submissions create one scoped project", async () => {
   const state = createRepository();
   const service = new ProjectService({
     projects: state.repository,
@@ -63,7 +95,7 @@ test("authorized duplicate submissions create one scoped project", async () => {
   ]);
 });
 
-test("different operation identifiers create distinct scoped projects", async () => {
+controlTest("different operation identifiers create distinct scoped projects", async () => {
   const state = createRepository();
   const service = new ProjectService({
     projects: state.repository,
@@ -90,7 +122,7 @@ test("different operation identifiers create distinct scoped projects", async ()
   ]);
 });
 
-test("request context selects each workspace", async () => {
+controlTest("request context selects each workspace", async () => {
   const state = createRepository();
   const workspaceOneService = new ProjectService({
     projects: state.repository,
@@ -124,7 +156,7 @@ test("request context selects each workspace", async () => {
   ]);
 });
 
-test("unauthorized creation has no repository side effect", async () => {
+controlTest("unauthorized creation has no repository side effect", async () => {
   const state = createRepository();
   const service = new ProjectService({
     projects: state.repository,
@@ -144,7 +176,7 @@ test("unauthorized creation has no repository side effect", async () => {
   assert.equal(state.records.size, 0);
 });
 
-test("createProject inherits the existing input bounds", async () => {
+controlTest("createProject inherits the existing input bounds", async () => {
   const state = createRepository();
   const service = new ProjectService({
     projects: state.repository,
@@ -173,14 +205,14 @@ test("createProject inherits the existing input bounds", async () => {
   assert.equal(state.calls.length, 0);
 });
 
-test("the change adds no dependency", async () => {
+controlTest("the change adds no dependency", async () => {
   const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
 
   assert.deepEqual(packageJson.dependencies ?? {}, {});
   assert.deepEqual(packageJson.devDependencies ?? {}, {});
 });
 
-test("existing project details keep their request-context scope", async () => {
+controlTest("existing project details keep their request-context scope", async () => {
   const calls = [];
   const projects = {
     findById: async (...args) => {
