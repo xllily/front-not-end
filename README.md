@@ -1,7 +1,8 @@
-# front-not-end
+# front-not-end — backend completeness for frontend-led product work
 
-front-not-end lets a frontend developer describe the product while an existing
-Coding Agent takes responsibility for the backend technical work.
+front-not-end is an Apache-2.0 Agent Skill for Codex. It lets a frontend
+developer describe the product while the Coding Agent takes responsibility for
+production-capable backend implementation.
 
 It is an installable Agent Skill, not a replacement Agent or a new runtime. The
 Skill makes the Agent inspect the repository and available operating context,
@@ -12,6 +13,15 @@ state.
 The user owns product intent, facts the Agent cannot infer, real constraints,
 and authorization for irreversible or external actions. The Agent owns
 technical completeness.
+
+Use front-not-end when a frontend or product request crosses into APIs,
+server-side data, authentication, permissions, persistence, background jobs,
+integrations, deployment, or other production backend behavior. The canonical
+Agent instructions live in [`skills/front-not-end/SKILL.md`](skills/front-not-end/SKILL.md);
+[`llms.txt`](llms.txt) is the concise Agent-readable index.
+
+**Status:** experimental `0.x`. The current evidence covers two runnable Codex
+tracers, not every stack, Agent host, or backend scenario.
 
 ## Install
 
