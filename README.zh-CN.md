@@ -20,7 +20,7 @@ Agent 负责技术完整性。
 
 ## 安装
 
-仓库发布后：
+从 GitHub 安装：
 
 ```sh
 npx skills add xllily/front-not-end --skill front-not-end -g -a codex -y
@@ -121,6 +121,12 @@ Docker daemon、固定摘要镜像内容、宿主内核或 Docker Desktop 虚拟
 - [实际 Tracer 结果](docs/tracer-result.md)
 - [Skill 包](docs/executable-skill-packages.md)
 - [English](README.md)
+
+## 贡献与方向
+
+front-not-end 是个人维护的实验性项目。欢迎基于具体、可运行产品场景的建议和贡献。
+项目当前不计划建设通用 evaluator、control plane、Agent Runtime 或推测性的抽象体系。
+新证据可以重新开启这些方向；是否纳入路线，由维护者根据产品边界和实际结果判断。
 
 ## 许可证
 
