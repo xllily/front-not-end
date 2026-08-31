@@ -25,7 +25,7 @@ tracers, not every stack, Agent host, or backend scenario.
 
 ## Install
 
-After the repository is published:
+Install from GitHub:
 
 ```sh
 npx skills add xllily/front-not-end --skill front-not-end -g -a codex -y
@@ -138,6 +138,15 @@ not a statistical benchmark.
 - [Skill package](docs/executable-skill-packages.md)
 - [Continuous integration and releases](docs/automation.md)
 - [简体中文](README.zh-CN.md)
+
+## Contributing and direction
+
+front-not-end is a personally maintained experimental project. Suggestions and
+contributions are welcome when they are grounded in a concrete, runnable
+product scenario. The project does not currently plan to build a generic
+evaluator, control plane, Agent Runtime, or speculative abstraction system.
+New evidence can reopen these directions; the maintainer decides what enters
+the roadmap based on the product boundary and observed results.
 
 ## License
 
