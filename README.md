@@ -98,7 +98,13 @@ image explicitly before the first run:
 
 ```sh
 npm run tracer:pull-image
+npm run doctor
 ```
+
+The doctor and acceptance runner reject remote or unknown Docker endpoints and
+verify the pinned runtime, a client-to-daemon bind marker, and effective PID,
+memory, and CPU limits. Acceptance automatically repeats the same preflight in
+its own process before snapshot or control execution.
 
 After the Agent finishes:
 

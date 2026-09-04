@@ -84,7 +84,12 @@ ORGANIZATION_CONTEXT.md 是当前项目可用的组织上下文。
 
 ```sh
 npm run tracer:pull-image
+npm run doctor
 ```
+
+Doctor 与验收器会拒绝远程或无法确认的 Docker endpoint，并验证固定版本运行时、
+客户端到 daemon 的 bind marker，以及实际生效的 PID、内存和 CPU 上限。验收器会在
+创建快照或执行控制测试前，在自己的进程中自动重复同一套 preflight。
 
 Agent 完成后运行：
 
