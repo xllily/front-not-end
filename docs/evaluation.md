@@ -42,6 +42,8 @@ For project creation, the Agent should:
 ## Executable proof
 
 Each fixture's repository tests verify its existing platform primitive. The
+List/Search seed test makes the helper's public `{ items, nextCursor }` response
+shape visible while keeping the repository's stable key internal. The
 List/Search control-side acceptance verifies:
 
 - two consecutive pages contain the exact expected items without skips or
