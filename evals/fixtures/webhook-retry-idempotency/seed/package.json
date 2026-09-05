@@ -1,0 +1,8 @@
+{
+  "name": "webhook-retry-idempotency-tracer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

@@ -18,6 +18,9 @@ const fixtureRoot = fileURLToPath(
 const projectCreateFixtureRoot = fileURLToPath(
   new URL("../fixtures/project-create-authorization/seed/", import.meta.url),
 );
+const webhookFixtureRoot = fileURLToPath(
+  new URL("../fixtures/webhook-retry-idempotency/seed/", import.meta.url),
+);
 const workspaces = [];
 
 async function createWorkspace() {
@@ -367,6 +370,58 @@ test("rejects the unchanged project create seed", async () => {
     runTracerAcceptance({ workspace, caseName: "project-create-authorization" }),
     (error) =>
       error.code === 1 && /createProject/u.test(`${error.stdout}\n${error.stderr}`),
+  );
+});
+
+async function createWebhookWorkspace(body) {
+  const workspace = await mkdtemp(path.join(tmpdir(), "front-not-end-webhook-"));
+  workspaces.push(workspace);
+  await cp(webhookFixtureRoot, workspace, { recursive: true });
+  if (body) {
+    await writeFile(path.join(workspace, "src/order-service.mjs"), `import { applyOrderWebhook } from "./platform-order-webhook.mjs";
+
+export class OrderService {
+  constructor({ orders, requestContext, webhookAccounts }) {
+    this.orders = orders;
+    this.requestContext = requestContext;
+    this.webhookAccounts = webhookAccounts;
+  }
+
+  async getOrder(orderId) {
+    return this.orders.findById(this.requestContext.tenantId, orderId);
+  }
+
+  async handleWebhook(input) {
+    ${body}
+  }
+}
+`);
+  }
+  return workspace;
+}
+
+test("accepts a webhook solution using the existing verified atomic platform path", async () => {
+  const workspace = await createWebhookWorkspace(
+    "return applyOrderWebhook(this.orders, this.webhookAccounts, input);",
+  );
+  const result = await runTracerAcceptance({ workspace, caseName: "webhook-retry-idempotency" });
+  assert.match(result.stdout, /pre-commit failure leaves no partial state/u);
+  assert.doesNotMatch(result.stdout, /not ok/u);
+});
+
+test("rejects the unchanged webhook seed", async () => {
+  const workspace = await createWebhookWorkspace();
+  await assert.rejects(
+    runTracerAcceptance({ workspace, caseName: "webhook-retry-idempotency" }),
+    (error) => error.code === 1 && /handleWebhook/u.test(`${error.stdout}\n${error.stderr}`),
+  );
+});
+
+test("rejects a webhook that imports the helper but bypasses its runtime path", async () => {
+  const workspace = await createWebhookWorkspace("return this.orders.applyPaidEvent(input);");
+  await assert.rejects(
+    runTracerAcceptance({ workspace, caseName: "webhook-retry-idempotency" }),
+    (error) => error.code === 1 && /runtime path proof/u.test(`${error.stdout}\n${error.stderr}`),
   );
 });
 

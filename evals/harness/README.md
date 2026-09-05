@@ -28,6 +28,14 @@ node evals/harness/run-tracer-acceptance.mjs \
 Omitting `--case` preserves the original `existing-list-search-reuse` default.
 Unknown case names fail before Agent-produced code is started.
 
+The `webhook-retry-idempotency` case runs nine checks for signed raw-body
+handling, verified account scope, concurrent redelivery, distinct event
+identity, atomic order/outbox updates, pre-commit retry, input/error contracts,
+and existing order details. It uses the same runtime-path proof for
+`applyOrderWebhook` and checks that the supplied helper and in-memory repository
+remain byte-identical to the frozen seed. This proves fixture behavior, not
+durable database commits or external notification delivery.
+
 Before snapshot or control execution, acceptance resolves and pins the effective
 Docker endpoint. A uniquely named diagnostic container receives the production
 PID, memory, and CPU limits, reads its process cgroup through
