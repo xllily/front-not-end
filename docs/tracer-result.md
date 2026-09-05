@@ -59,9 +59,33 @@ test so the platform module visibly owns the public opaque cursor boundary.
 The unchanged control acceptance passes 4/4 for a synthetic workspace that adds
 only the missing service delegation.
 
-The two failed replays are not counted as product evidence or as comparative
-evidence. A current real-Agent result against the corrected fixture remains
-required before claiming that Stage 1 has replayed this tracer successfully.
+The two failed replays are not counted as passing product evidence or as
+comparative evidence.
+
+### 2026-09-05 corrected-fixture replay
+
+One explicitly activated front-not-end run against commit `029b1b7` used
+`gpt-5.6-sol`, `codex-cli 0.150.1`, and Host Node.js 22.20.0. It added
+`ProjectService.listProjects` delegation to the existing `queryPage` helper and
+focused service tests. The completed workspace was accepted without manual
+code corrections.
+
+| Result | front-not-end |
+| --- | ---: |
+| Independently rerun repository tests | 4/4 passed |
+| Restricted control acceptance | 4/4 passed |
+| Residual tracer and preflight containers | 0 |
+
+Restricted acceptance ran on Docker Desktop arm64 with the pinned sandbox
+Node.js 22.23.2. It verified request-context scope, consecutive opaque-cursor
+pages, input validation, unchanged dependencies, and project-detail behavior.
+The raw Agent stream recorded `turn.completed` and a final response; the original
+CLI process exit code was unavailable after task handoff. The independent test
+and acceptance commands both exited zero with no skipped tests.
+
+This verifies the corrected List/Search fixture result from one Skill run. It
+is not a new bare-Agent comparison or a completed two-tracer execution baseline;
+the current Project Creation replay remains outstanding.
 
 ## Mutation/authorization run
 
