@@ -4,7 +4,7 @@
 
 Use this project when a frontend or product request creates or changes APIs, server-side data, authentication, permissions, persistence, background jobs, integrations, deployment, or other production backend behavior. The user owns product intent and authorization for irreversible or external actions; the Coding Agent owns backend technical completeness.
 
-Status: experimental 0.x. Current evidence covers two runnable Codex tracers, not every stack, Agent host, or backend scenario.
+Status: experimental 0.x. Current evidence covers three runnable Codex tracers: scoped List/Search, authorized idempotent creation, and signed retry-safe order webhooks. It does not establish broad stack/Host coverage, durable database behavior, or external notification-delivery guarantees.
 
 ## Start here
 
@@ -15,7 +15,7 @@ Status: experimental 0.x. Current evidence covers two runnable Codex tracers, no
 
 ## Evidence and limits
 
-- [Current tracer verification](https://github.com/xllily/front-not-end/blob/master/docs/evaluation.md): What the two runnable development tracers actually verify.
+- [Current tracer verification](https://github.com/xllily/front-not-end/blob/master/docs/evaluation.md): What the three runnable development tracers actually verify.
 - [Observed tracer result](https://github.com/xllily/front-not-end/blob/master/docs/tracer-result.md): Recorded development evidence and its limitations.
 - [Harness trust boundary](https://github.com/xllily/front-not-end/blob/master/evals/harness/README.md): Isolation guarantees, trusted components, and unsupported cases.
 - [Continuous integration and releases](https://github.com/xllily/front-not-end/blob/master/docs/automation.md): Automated checks and release behavior.

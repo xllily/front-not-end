@@ -15,7 +15,7 @@ Agent 负责技术完整性。
 [`skills/front-not-end/SKILL.md`](skills/front-not-end/SKILL.md)，简明的 Agent 可读入口
 在 [`llms.txt`](llms.txt)。
 
-**状态：** 实验性 `0.x`。当前证据覆盖两条可运行的 Codex Tracer，不代表已经覆盖
+**状态：** 实验性 `0.x`。当前证据覆盖三条可运行的 Codex Tracer，不代表已经覆盖
 所有技术栈、Agent Host 或后端场景。
 
 ## 安装
@@ -56,12 +56,13 @@ $skill-installer 安装 https://github.com/xllily/front-not-end/tree/master/skil
 
 ## 可运行 Tracer
 
-仓库包含两个现有项目场景：`existing-list-search-reuse` 验证范围化搜索与稳定分页；
+仓库包含三个现有项目场景：`existing-list-search-reuse` 验证范围化搜索与稳定分页；
 `project-create-authorization` 验证有权限、按工作区隔离、可安全重试且未授权时无副作用
-的创建操作。两者都验证 Skill 能否把纯产品需求转化为贴合仓库、复用现有平台能力的
-实现。
+的创建操作；`webhook-retry-idempotency` 验证带签名的订单回调、可信账号范围，以及
+事件、订单和 outbox 的原子重试处理。它们验证 Skill 能否把产品需求转化为贴合仓库、
+复用现有平台能力的实现。
 
-准备干净工作区：
+先使用目标版本 tag 对应的仓库 checkout，再准备干净工作区：
 
 ```sh
 export FNE_REPO=/path/to/front-not-end
@@ -83,8 +84,8 @@ ORGANIZATION_CONTEXT.md 是当前项目可用的组织上下文。
 验收命令需要可用的 Docker 兼容运行时。首次运行前显式拉取固定摘要镜像：
 
 ```sh
-npm run tracer:pull-image
-npm run doctor
+npm --prefix "$FNE_REPO" run tracer:pull-image
+npm --prefix "$FNE_REPO" run doctor
 ```
 
 Doctor 与验收器会拒绝远程或无法确认的 Docker endpoint，并验证固定版本运行时、
@@ -100,25 +101,28 @@ node "$FNE_REPO/evals/harness/run-tracer-acceptance.mjs" --workspace "$PWD" --ca
 
 验收器只复制受限的普通文件快照，并在一次性非 root 容器中执行 Agent 产物：容器
 不能访问宿主机或外部网络，挂载只读，资源有上限，超时后由宿主机强制终止并清理；
-只有全部控制测试完成并返回匹配凭证才算通过。根据所选 case，它验证稳定分页或有
-权限且可安全重试的创建操作，并共同验证请求上下文范围、输入边界、真实经过现有
-平台能力、项目详情不回归，以及没有新增依赖。详见
+只有全部控制测试完成并返回匹配凭证才算通过。根据所选 case，它验证稳定分页、有
+权限且可安全重试的创建操作，或带签名且可安全重试的订单回调，并验证对应的可信
+范围、输入边界、真实经过现有平台能力、详情不回归，以及没有新增依赖。详见
 [Harness 安全边界](evals/harness/README.md)。
 
 Docker daemon、固定摘要镜像内容、宿主内核或 Docker Desktop 虚拟机，以及容器
 运行时仍属于受信任边界；镜像摘要只防止标签漂移，不代表镜像内容天然安全。
-当前 fixture 要求 workspace 使用原生 ESM；CommonJS 不在这两条 Tracer 的验收
+当前 fixture 要求 workspace 使用原生 ESM；CommonJS 不在这三条 Tracer 的验收
 边界内。
 
 ## 当前边界
 
-当前产品只有一个 Skill 和两条可运行 Tracer。它还不能证明对所有技术栈、
+当前产品只有一个 Skill 和三条可运行 Tracer。它还不能证明对所有技术栈、
 所有 Host 或所有后端场景都有效。只有多个真实产品任务重复暴露同一缺口时，才增加
 通用抽象。
 
 仓库已经记录一次 List/Search 的真实 Codex 开发对照：bare Codex 通过了自己的测试，
 但没有通过控制侧契约；front-not-end arm 同时通过两者。Mutation/authorization 还记录
-了一次通过的 front-not-end 运行，但没有 bare 对照。这些是开发证据，不是统计性评测。
+了一次通过的 front-not-end 运行，但没有 bare 对照。Webhook 的 bare 和 Skill 运行均
+通过验收，服务代码相同；两组都访问了全局项目记忆，因此不作 Skill 因果优势结论。
+这些是 fixture 级开发证据，不是统计性评测，也不证明数据库持久性或外部通知的投递
+保证。
 
 - [产品契约](docs/product-contract.md)
 - [架构](docs/architecture.md)

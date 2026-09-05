@@ -76,7 +76,8 @@ The repository ships three existing-project scenarios:
 They check whether the Skill leads the Agent from a product request to a
 repository-fit implementation that reuses an existing platform capability.
 
-Prepare a fresh workspace:
+Use a checkout of the intended version tag for reproducible fixture inputs,
+then prepare a fresh workspace:
 
 ```sh
 export FNE_REPO=/path/to/front-not-end
@@ -99,8 +100,8 @@ The acceptance command requires a Docker-compatible daemon. Pull its pinned
 image explicitly before the first run:
 
 ```sh
-npm run tracer:pull-image
-npm run doctor
+npm --prefix "$FNE_REPO" run tracer:pull-image
+npm --prefix "$FNE_REPO" run doctor
 ```
 
 The doctor and acceptance runner reject remote or unknown Docker endpoints and

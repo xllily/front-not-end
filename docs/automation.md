@@ -72,25 +72,30 @@ than weakening the release gates.
 
 ## Verify a downloaded release
 
-For `v0.1.0`, download both assets into an empty directory and verify them:
+For `v0.2.0`, download both assets into an empty directory and verify them:
 
 ```sh
-gh release download v0.1.0 --repo xllily/front-not-end \
-  --pattern 'front-not-end-v0.1.0.tar.gz*'
-sha256sum --check front-not-end-v0.1.0.tar.gz.sha256
-gh attestation verify front-not-end-v0.1.0.tar.gz \
+gh release download v0.2.0 --repo xllily/front-not-end \
+  --pattern 'front-not-end-v0.2.0.tar.gz*'
+sha256sum --check front-not-end-v0.2.0.tar.gz.sha256
+gh attestation verify front-not-end-v0.2.0.tar.gz \
   --repo xllily/front-not-end \
   --signer-workflow xllily/front-not-end/.github/workflows/release.yml \
-  --source-ref refs/tags/v0.1.0 \
+  --source-ref refs/tags/v0.2.0 \
   --deny-self-hosted-runners
 ```
 
 On macOS, `shasum -a 256 --check` can replace `sha256sum --check`. To also pin an
 independently verified source commit, add `--source-digest <commit-sha>` to the
 attestation command. Verification establishes artifact identity and build
-origin, not correctness beyond the two [documented fixture results](tracer-result.md).
+origin, not correctness beyond the three [documented fixture results](tracer-result.md).
 These commands describe verification after publication; they do not assert that
 a version has already been published.
+
+The checksum identifies the published archive. Packaging does not promise
+byte-identical archives across separate builds because tar metadata includes
+packaging time. Fresh-install checks compare the installed Skill files with
+the tagged source, alongside verification of the downloaded asset itself.
 
 See GitHub's [attestation action](https://github.com/actions/attest) and
 [verification CLI](https://cli.github.com/manual/gh_attestation_verify) for the

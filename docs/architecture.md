@@ -1,4 +1,4 @@
-# Version 0.1 Architecture
+# Version 0.2 Architecture
 
 ## Product seam
 
@@ -39,10 +39,15 @@ Each tracer contains:
 The List/Search tracer proves reuse of scoped pagination and preservation of
 its opaque cursor contract. The project-creation tracer proves reuse of an
 authorized, workspace-scoped, idempotent mutation with no unauthorized
-repository side effect.
+repository side effect. The order-webhook tracer proves reuse of raw-body
+signature verification, trusted provider-account resolution, and one atomic
+event/order/outbox operation for retries and pre-commit failure recovery.
 
 Workspace isolation and `project:create` are facts of these fixtures, not
-default architecture or authorization policy for other products.
+default architecture or authorization policy for other products. Likewise, the
+webhook fixture's signed event shape and synchronous in-memory transaction are
+scenario facts, not a provider protocol, database design, or delivery guarantee
+for every integration.
 
 Existing tested behavior and public shapes are compatibility contracts. The
 Agent keeps a capability unchanged unless an executable failing example proves

@@ -1,5 +1,18 @@
 # Product Tracer Results
 
+The current 0.2 contract covers exactly these three fixture capabilities:
+
+| Capability | Current recorded restricted acceptance |
+| --- | --- |
+| List/Search reuse | Corrected Skill run: 4/4 |
+| Authorized idempotent project creation | Corrected Skill run: 7/7 |
+| Signed retry-safe order webhook | Bare and Skill runs: 9/9 each |
+
+These are fixture-level results. The corrected List/Search run retains an
+original CLI exit-status gap; the webhook runs both accessed project memory
+and show equal service results. The detailed records below preserve those
+limits and the earlier failures.
+
 ## List/Search comparison
 
 On 2026-08-21, the active tracer was run once with bare Codex and once with
