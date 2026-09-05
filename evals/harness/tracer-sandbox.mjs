@@ -25,7 +25,14 @@ const maxOutputBytes = 1024 * 1024;
 const dockerControlTimeoutMs = 10_000;
 
 export const tracerSandboxImage =
-  "node:22.20.0-alpine@sha256:dbcedd8aeab47fbc0f4dd4bffa55b7c3c729a707875968d467aaaea42d6225af";
+  "node:22.23.2-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32";
+
+export const tracerSandboxResourceArguments = Object.freeze([
+  "--pids-limit=32",
+  "--memory=256m",
+  "--memory-swap=256m",
+  "--cpus=1",
+]);
 
 function snapshotError(kind, relativePath) {
   return new TypeError(`Tracer workspace contains unsupported ${kind}: ${relativePath}`);
@@ -168,7 +175,11 @@ export async function createTracerSnapshot({ workspace, controlEntries, controlR
       workspace: workspaceSnapshot,
     };
   } catch (error) {
-    await rm(snapshotRoot, { recursive: true, force: true });
+    try {
+      await rm(snapshotRoot, { recursive: true, force: true });
+    } catch (cleanupError) {
+      error.cleanupError = cleanupError;
+    }
     throw error;
   }
 }
@@ -198,10 +209,14 @@ async function ignoreMissingContainer(operation) {
   }
 }
 
-async function killContainer(containerId) {
+function dockerArguments(dockerEndpoint, args) {
+  return ["--host", dockerEndpoint, ...args];
+}
+
+async function killContainer(containerId, dockerEndpoint) {
   await ignoreMissingContainer(() => execFile(
     "docker",
-    ["kill", "--signal=KILL", containerId],
+    dockerArguments(dockerEndpoint, ["kill", "--signal=KILL", containerId]),
     {
       encoding: "utf8",
       env: process.env,
@@ -212,14 +227,18 @@ async function killContainer(containerId) {
   ));
 }
 
-async function removeContainer(containerId, { confirmAbsent = false } = {}) {
+async function removeContainer(
+  containerId,
+  dockerEndpoint,
+  { confirmAbsent = false } = {},
+) {
   const retryDelays = confirmAbsent ? [0, 50, 100, 200, 400] : [0];
   for (const retryDelay of retryDelays) {
     if (retryDelay > 0) await delay(retryDelay);
     try {
       await execFile(
         "docker",
-        ["rm", "--force", "--volumes", containerId],
+        dockerArguments(dockerEndpoint, ["rm", "--force", "--volumes", containerId]),
         {
           encoding: "utf8",
           env: process.env,
@@ -236,11 +255,14 @@ async function removeContainer(containerId, { confirmAbsent = false } = {}) {
   }
 }
 
-function startAttachedContainer(containerId, challenge, timeoutMs) {
+function startAttachedContainer(containerId, challenge, timeoutMs, dockerEndpoint) {
   return new Promise((resolve, reject) => {
     const child = spawn(
       "docker",
-      ["start", "--attach", "--interactive", containerId],
+      dockerArguments(
+        dockerEndpoint,
+        ["start", "--attach", "--interactive", containerId],
+      ),
       { env: process.env, stdio: ["pipe", "pipe", "pipe"] },
     );
     const stdoutChunks = [];
@@ -254,7 +276,7 @@ function startAttachedContainer(containerId, challenge, timeoutMs) {
       if (forcedReason) return;
       forcedReason = reason;
       child.kill("SIGKILL");
-      killPromise = killContainer(containerId);
+      killPromise = killContainer(containerId, dockerEndpoint);
     };
     const timer = setTimeout(() => forceStop("timeout"), timeoutMs);
 
@@ -270,34 +292,39 @@ function startAttachedContainer(containerId, challenge, timeoutMs) {
     });
     child.on("close", async (code, signal) => {
       clearTimeout(timer);
+      let cleanupError;
       try {
         await killPromise;
       } catch (error) {
-        reject(error);
-        return;
+        cleanupError = error;
       }
 
       const stdout = Buffer.concat(stdoutChunks).toString("utf8");
       const stderr = Buffer.concat(stderrChunks).toString("utf8");
+      let primaryError;
       if (forcedReason === "timeout") {
-        reject(outputError(
+        primaryError = outputError(
           `Tracer acceptance timed out after ${timeoutMs}ms`,
           { code: "ETIMEDOUT", killed: true, signal: "SIGKILL", stderr, stdout },
-        ));
-        return;
-      }
-      if (forcedReason === "output limit") {
-        reject(outputError(
+        );
+      } else if (forcedReason === "output limit") {
+        primaryError = outputError(
           `Tracer acceptance exceeded the ${maxOutputBytes}-byte output limit`,
           { code: "ERR_TRACER_OUTPUT_LIMIT", killed: true, signal: "SIGKILL", stderr, stdout },
-        ));
-        return;
-      }
-      if (code !== 0) {
-        reject(outputError(
+        );
+      } else if (code !== 0) {
+        primaryError = outputError(
           `Tracer acceptance exited with code ${code}`,
           { code, signal, stderr, stdout },
-        ));
+        );
+      }
+      if (primaryError) {
+        if (cleanupError) primaryError.cleanupError = cleanupError;
+        reject(primaryError);
+        return;
+      }
+      if (cleanupError) {
+        reject(cleanupError);
         return;
       }
       resolve({ stderr, stdout });
@@ -318,10 +345,14 @@ export async function runTracerSandbox({
   challenge,
   control,
   controlTest,
+  dockerEndpoint,
   inheritedEnvironment,
   timeoutMs,
   workspace,
 }) {
+  if (typeof dockerEndpoint !== "string" || dockerEndpoint.length === 0) {
+    throw new TypeError("Tracer sandbox requires a verified Docker endpoint");
+  }
   for (const mountPath of [control, workspace]) {
     if (mountPath.includes(",")) {
       throw new TypeError("Tracer sandbox paths cannot contain commas");
@@ -353,10 +384,7 @@ export async function runTracerSandbox({
     "--read-only",
     "--cap-drop=ALL",
     "--security-opt=no-new-privileges=true",
-    "--pids-limit=32",
-    "--memory=256m",
-    "--memory-swap=256m",
-    "--cpus=1",
+    ...tracerSandboxResourceArguments,
     "--ulimit=nofile=256:256",
     "--user=65532:65532",
     "--hostname=front-not-end-sandbox",
@@ -384,9 +412,10 @@ export async function runTracerSandbox({
 
   let createAttempted = false;
   let containerId;
+  let primaryError;
   try {
     createAttempted = true;
-    const created = await execFile("docker", createArguments, {
+    const created = await execFile("docker", dockerArguments(dockerEndpoint, createArguments), {
       encoding: "utf8",
       env: process.env,
       killSignal: "SIGKILL",
@@ -396,20 +425,26 @@ export async function runTracerSandbox({
     if (!/^[0-9a-f]{64}$/u.test(containerId)) {
       throw new Error("Docker did not return a valid tracer sandbox container ID");
     }
-    return await startAttachedContainer(containerId, challenge, timeoutMs);
+    return await startAttachedContainer(containerId, challenge, timeoutMs, dockerEndpoint);
   } catch (error) {
     if (/^[0-9a-f]{64}$/u.test(containerId)) error.sandboxContainerId = containerId;
     if (/No such image|Unable to find image/u.test(`${error.stderr ?? ""}\n${error.message}`)) {
       error.message =
-        `Pinned tracer sandbox image is unavailable. Run: docker pull ${tracerSandboxImage}`;
+        "Pinned tracer sandbox image is unavailable. Run: npm run tracer:pull-image";
     }
+    primaryError = error;
     throw error;
   } finally {
     if (createAttempted) {
       const hasExactId = /^[0-9a-f]{64}$/u.test(containerId);
-      await removeContainer(hasExactId ? containerId : containerName, {
-        confirmAbsent: !hasExactId,
-      });
+      try {
+        await removeContainer(hasExactId ? containerId : containerName, dockerEndpoint, {
+          confirmAbsent: !hasExactId,
+        });
+      } catch (cleanupError) {
+        if (primaryError) primaryError.cleanupError = cleanupError;
+        else throw cleanupError;
+      }
     }
   }
 }

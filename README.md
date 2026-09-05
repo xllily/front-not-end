@@ -20,7 +20,7 @@ integrations, deployment, or other production backend behavior. The canonical
 Agent instructions live in [`skills/front-not-end/SKILL.md`](skills/front-not-end/SKILL.md);
 [`llms.txt`](llms.txt) is the concise Agent-readable index.
 
-**Status:** experimental `0.x`. The current evidence covers two runnable Codex
+**Status:** experimental `0.x`. The current evidence covers three runnable Codex
 tracers, not every stack, Agent host, or backend scenario.
 
 ## Install
@@ -87,13 +87,15 @@ authentication, role, and data-access boundaries.
 
 ## Runnable tracers
 
-The repository ships two existing-project scenarios:
+The repository ships three existing-project scenarios:
 
-- `existing-list-search-reuse` checks scoped search and stable pagination; and
+- `existing-list-search-reuse` checks scoped search and stable pagination;
 - `project-create-authorization` checks an authorized, workspace-scoped,
-  idempotent mutation with no unauthorized side effect.
+  idempotent mutation with no unauthorized side effect; and
+- `webhook-retry-idempotency` checks verified provider callbacks, scoped order
+  updates, and retry-safe atomic event/order/outbox handling.
 
-Both check whether the Skill leads the Agent from a product request to a
+They check whether the Skill leads the Agent from a product request to a
 repository-fit implementation that reuses an existing platform capability.
 
 Prepare a fresh workspace:
@@ -120,7 +122,13 @@ image explicitly before the first run:
 
 ```sh
 npm run tracer:pull-image
+npm run doctor
 ```
+
+The doctor and acceptance runner reject remote or unknown Docker endpoints and
+verify the pinned runtime, a client-to-daemon bind marker, and effective PID,
+memory, and CPU limits. Acceptance automatically repeats the same preflight in
+its own process before snapshot or control execution.
 
 After the Agent finishes:
 
@@ -134,24 +142,26 @@ non-root container with no host or external network route, bounded resources,
 host-controlled container-execution timeout and cleanup, and a challenge-bound
 completion receipt. The Docker daemon, pinned image contents, host kernel or
 Docker Desktop VM, and container runtime remain trusted boundaries. Depending
-on the selected case, it verifies stable pages or
-authorized duplicate-safe creation, plus request-context scope, input bounds,
-actual use of the existing platform path, unchanged project details, and no
+on the selected case, it verifies stable pages, authorized duplicate-safe
+creation, or signed retry-safe order webhooks, plus the appropriate trusted
+scope, input bounds, actual platform path, unchanged detail behavior, and no
 added dependency. The current fixtures require native ESM workspace code;
 CommonJS is outside their acceptance boundary. See the
 [Harness boundary](evals/harness/README.md).
 
 ## Current boundary
 
-The current product is the Skill plus these two runnable tracers. It does not
+The current product is the Skill plus these three runnable tracers. It does not
 yet claim broad stack, Host, or backend-scenario coverage. New abstractions are
 added only after repeated real product runs expose the same missing behavior.
 
 One real Codex development comparison is recorded for List/Search: bare Codex
 passed its own tests but failed the control contract, while the front-not-end
 arm passed both. The mutation/authorization tracer has one passing
-front-not-end run without a bare comparison. These are development evidence,
-not a statistical benchmark.
+front-not-end run without a bare comparison. The webhook tracer has passing
+bare and Skill runs with identical service code; both accessed global project
+memory, so it supports no causal Skill-advantage claim. These are development
+results, not a statistical benchmark or production database/delivery guarantee.
 
 - [Product contract](docs/product-contract.md)
 - [Architecture](docs/architecture.md)

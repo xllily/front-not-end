@@ -9,6 +9,7 @@ import {
   escapeTerminalText,
   runTracerSandbox,
 } from "./tracer-sandbox.mjs";
+import { runTracerPreflight } from "./tracer-preflight.mjs";
 
 const defaultCaseName = "existing-list-search-reuse";
 const evalsRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -27,6 +28,14 @@ const acceptanceCases = new Map([
       controlTest:
         "fixtures/project-create-authorization/acceptance/create-projects.test.mjs",
       expectedTests: 7,
+    },
+  ],
+  [
+    "webhook-retry-idempotency",
+    {
+      controlTest:
+        "fixtures/webhook-retry-idempotency/acceptance/order-webhook.test.mjs",
+      expectedTests: 9,
     },
   ],
 ]);
@@ -62,6 +71,7 @@ export async function runTracerAcceptance({
     throw new RangeError("Tracer timeout must be an integer from 1 to 60000 milliseconds");
   }
 
+  const preflight = await runTracerPreflight();
   const challenge = randomBytes(32).toString("hex");
   const completionReceipt =
     `FRONT_NOT_END_ACCEPTANCE_COMPLETED ${challenge} ${acceptanceCase.expectedTests}`;
@@ -73,12 +83,14 @@ export async function runTracerAcceptance({
     controlRoot: evalsRoot,
     workspace: resolvedWorkspace,
   });
+  let primaryError;
   try {
     const result = await runTracerSandbox({
       caseName,
       challenge,
       control: snapshot.control,
       controlTest: acceptanceCase.controlTest,
+      dockerEndpoint: preflight.endpoint,
       inheritedEnvironment,
       timeoutMs,
       workspace: snapshot.workspace,
@@ -101,9 +113,19 @@ export async function runTracerAcceptance({
     if (typeof error.stdout === "string") error.stdout = escapeTerminalText(error.stdout);
     if (typeof error.stderr === "string") error.stderr = escapeTerminalText(error.stderr);
     error.message = escapeTerminalText(error.message);
+    primaryError = error;
     throw error;
   } finally {
-    await snapshot.dispose();
+    try {
+      await snapshot.dispose();
+    } catch {
+      const cleanupError = new Error(
+        "Tracer acceptance could not remove its temporary workspace snapshot. Check local temporary-directory permissions and retry.",
+      );
+      cleanupError.code = "ERR_TRACER_SNAPSHOT_CLEANUP";
+      if (primaryError) primaryError.cleanupError = cleanupError;
+      else throw cleanupError;
+    }
   }
 }
 

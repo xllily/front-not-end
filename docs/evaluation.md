@@ -42,6 +42,8 @@ For project creation, the Agent should:
 ## Executable proof
 
 Each fixture's repository tests verify its existing platform primitive. The
+List/Search seed test makes the helper's public `{ items, nextCursor }` response
+shape visible while keeping the repository's stable key internal. The
 List/Search control-side acceptance verifies:
 
 - two consecutive pages contain the exact expected items without skips or
@@ -66,7 +68,14 @@ The project-creation control-side acceptance verifies:
 - project details retain request-context scoping; and
 - no dependency was added.
 
-The acceptance test runs in a disposable, permission-restricted container
+Before creating that snapshot or running a control test, acceptance uses the
+same preflight as `npm run doctor`. It accepts only a resolved local Unix socket
+or Windows named-pipe endpoint, binds subsequent Docker commands to that
+endpoint, roundtrips a client-generated marker, verifies Node 22.23.2 from the
+pinned image, and reads the diagnostic process's cgroup v1 or v2 PID, memory,
+and CPU limits. Missing, unlimited, malformed, or oversized limits fail closed.
+
+The acceptance test then runs in a disposable, permission-restricted container
 against a bounded read-only snapshot. Harness tests prove that both unchanged
 seeds fail, unknown case names are rejected, control environment secrets are
 not inherited, and Agent-produced code cannot read a control file outside the
@@ -80,7 +89,9 @@ challenge is absent from Agent-visible module identities, that ESM relays and
 workspace CommonJS cannot extend the control loader chain, that excessive
 snapshot entries fail before container execution, and that restrictive host
 `umask` values cannot make valid snapshots unreadable by the fixed container
-user.
+user. Additional cleanup regressions preserve the original timeout, output,
+sandbox, or diagnostic failure when later kill, container removal, or snapshot
+disposal also fails.
 
 ## Current claim boundary
 

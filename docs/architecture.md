@@ -52,7 +52,11 @@ that the product request cannot fit it.
 
 [`run-tracer-acceptance.mjs`](../evals/harness/run-tracer-acceptance.mjs)
 executes completed Agent code in a disposable container. A fixed case allowlist
-selects the acceptance test. Before execution, the runner copies only regular,
+selects the acceptance test. Before snapshotting, the runner executes the same
+preflight exposed by `npm run doctor`: it rejects remote or unprovable Docker
+endpoints, pins the accepted local endpoint, roundtrips a random bind marker,
+checks the pinned Node runtime, and verifies the diagnostic process's cgroup
+PID, memory, and CPU limits. The runner then copies only regular,
 single-link `package.json` and `src/` files into a bounded snapshot; links,
 special files, nested filesystems, oversized inputs, and concurrent changes
 fail closed.
@@ -63,6 +67,11 @@ capabilities, `no-new-privileges`, and CPU, memory, PID, output, and wall-time
 limits for container execution. Node permissions still deny filesystem writes,
 child processes, and Workers inside that boundary. The host force-kills and
 removes the exact container on failure or timeout.
+
+Diagnostic and acceptance cleanup preserve the first execution error if a
+later kill, container removal, or snapshot disposal also fails. Successful
+preflights are cached only in-process by effective endpoint and pinned image;
+failed checks are not cached.
 
 Success also requires a challenge-bound receipt emitted only after every
 allowlisted control test completes. Agent output is not the verdict, and all

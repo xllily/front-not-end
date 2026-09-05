@@ -38,6 +38,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Test release gates
+        run: node --test .github/scripts/verify-release-checks.test.mjs
+
       - name: Pull pinned tracer sandbox image
         run: npm run tracer:pull-image
 
