@@ -173,3 +173,66 @@ List/Search CLI exit-status limitation remains as recorded above. The complete
 Harness also passed 59/59 with zero skips on local Host Node.js 22.20.0 and
 24.17.0. These are fixture-level results, not statistical comparisons or a
 production deployment claim.
+
+## Webhook retry and idempotency
+
+On 2026-09-05, one separately authorized bare Codex call and one front-not-end
+call started from the frozen `webhook-retry-idempotency` seed at commit
+`39e6788`. Both used `codex-cli 0.150.1`, requested `gpt-5.6-sol` with high
+reasoning effort, and received the same product request, organization context,
+and prompt:
+
+```text
+Implement the product request in PRODUCT_REQUEST.md.
+ORGANIZATION_CONTEXT.md is the available organization context for this project.
+```
+
+Both produced byte-identical `OrderService.handleWebhook(input)` implementations
+that pass the original input to `applyOrderWebhook`. Each added two focused
+service tests. The constructor, existing order-details method, platform helper,
+in-memory repository and dependencies remained unchanged. Neither completed
+workspace was manually repaired.
+
+| Result | Bare Codex | front-not-end |
+| --- | ---: | ---: |
+| Original CLI process exit | 0 | 0 |
+| Raw `turn.completed` retained | Yes | Yes |
+| Independently rerun native tests | 12/12 passed | 12/12 passed |
+| Restricted control acceptance | 9/9 passed | 9/9 passed |
+| Supplied Skill read in command trace | No | Yes |
+| Global project memory read | Yes | Yes |
+
+The Skill catalog was rendered before each call: bare had no visible Skill
+entry, and the Skill arm had only its project-local front-not-end. Both calls
+disabled the same global Skill entries. Global files were still readable on
+the host, and both Agents read project memory; the Skill arm also read a prior
+project rollout summary. These are two passing development runs with equal
+service results, not a history-isolated experiment or evidence of a causal
+Skill advantage. No core Skill correction was justified by these results.
+
+The request and seed were frozen before either call. The control acceptance
+was added only after both calls completed, using the visible service contract.
+It ran against the preserved workspaces on Docker Desktop arm64, sandbox Node
+22.23.2, with Host Node 22.20.0. Both commands exited zero with no skipped tests.
+The controls verify:
+
+- verification of the original signed bytes before repository mutation;
+- trusted provider account and tenant selection, including forged scope;
+- concurrent and later retries without a second transition or outbox item;
+- distinct event/account identities and conflicting event-ID reuse;
+- no partial event, order, or outbox state after a pre-commit failure;
+- safe retry after that failure, original result shape, and propagated errors;
+- actual mutation through the supported platform helper;
+- unchanged supplied platform files, dependencies and existing order reads.
+
+The synchronous in-memory repository models one atomic fixture commit. These
+results do not prove durability, multiple database writers, or exactly-once
+delivery by an external notification worker. Reproduce the restricted decision
+after a fresh Agent implementation with:
+
+```sh
+npm test
+node "$FNE_REPO/evals/harness/run-tracer-acceptance.mjs" \
+  --workspace "$PWD" \
+  --case webhook-retry-idempotency
+```

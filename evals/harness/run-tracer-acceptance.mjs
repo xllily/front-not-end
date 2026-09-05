@@ -30,6 +30,14 @@ const acceptanceCases = new Map([
       expectedTests: 7,
     },
   ],
+  [
+    "webhook-retry-idempotency",
+    {
+      controlTest:
+        "fixtures/webhook-retry-idempotency/acceptance/order-webhook.test.mjs",
+      expectedTests: 9,
+    },
+  ],
 ]);
 
 function resolveAcceptanceCase(caseName) {
