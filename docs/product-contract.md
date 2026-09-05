@@ -1,4 +1,4 @@
-# Version 0.1 Product Contract
+# Version 0.2 Product Contract
 
 ## Product promise
 
@@ -43,16 +43,34 @@ system.
 | Access, cost, external effect, or irreversible action | User authorizes |
 | Missing evidence | Agent verifies or reports the gap |
 
-## Version 0.1 boundary
+## Version 0.2 boundary
 
-Version 0.1 contains one installable Codex Skill and two existing-project
-tracers: List/Search reuse and authorized project creation. It does not claim:
+Version 0.2 contains one installable Codex Skill and exactly three
+existing-project tracers:
+
+| Capability | Verified fixture boundary |
+| --- | --- |
+| List/Search | Trusted workspace scope, stable pagination and the existing opaque cursor shape |
+| Project creation | Authorization, trusted workspace scope and idempotent creation |
+| Order webhook | Signed raw bytes, verified provider scope and atomic retry-safe event/order/outbox handling |
+
+The webhook bare and Skill runs produced identical service code and both read
+global project memory. They establish passing fixture results, not a causal
+Skill advantage. No demonstrated defect required a core Skill change for 0.2.
+
+This version does not claim:
 
 - another Host or a new Agent Runtime;
 - broad language, framework, database, or infrastructure coverage;
 - a generic evaluator, schema system, control plane, marketplace, or UI;
 - a preferred backend architecture; or
 - recursive modification of front-not-end itself.
+
+The webhook repository models a synchronous in-memory atomic commit. It does
+not prove durable database behavior or exactly-once external notification
+delivery. The detailed [run results](tracer-result.md) retain other evidence
+limits, including the corrected List/Search run's unavailable original CLI
+exit status.
 
 The current acceptance contract is documented in
 [`evaluation.md`](evaluation.md).

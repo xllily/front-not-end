@@ -1,6 +1,7 @@
 # Executable Skill Package
 
-Version 0.1 ships one Codex-compatible package:
+The 0.2 contract retains one Codex-compatible package. Its Skill files are
+unchanged from 0.1; the third tracer extends recorded product evidence:
 
 ```text
 skills/front-not-end/
@@ -47,6 +48,25 @@ npx skills add xllily/front-not-end --skill front-not-end -g -a codex -y
 
 The built-in Codex `$skill-installer` is also supported. Manual copying is a
 fallback only when neither installer is available.
+
+To install a specific published version from its verified Release archive,
+first follow the [checksum and provenance verification](automation.md#verify-a-downloaded-release).
+Then use the tested Skills CLI 1.5.23 to install into a fresh project:
+
+```sh
+mkdir verified-skill
+tar -xzf front-not-end-v0.2.0.tar.gz -C verified-skill
+export FNE_VERIFIED_SKILL="$(pwd)/verified-skill/front-not-end"
+mkdir fresh-project
+cd fresh-project
+npx --yes skills@1.5.23 add "$FNE_VERIFIED_SKILL" --skill front-not-end -a codex -y
+npx --yes skills@1.5.23 list -a codex
+```
+
+Start a new Codex task in that project after installation. Use a checkout of
+the same version tag for the three fixtures and their runner; the standalone
+archive contains only the Skill. These commands apply after that version is
+published and do not themselves run an Agent or publish a release.
 
 ## Release artifact
 
