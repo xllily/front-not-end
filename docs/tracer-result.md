@@ -84,8 +84,8 @@ CLI process exit code was unavailable after task handoff. The independent test
 and acceptance commands both exited zero with no skipped tests.
 
 This verifies the corrected List/Search fixture result from one Skill run. It
-is not a new bare-Agent comparison or a completed two-tracer execution baseline;
-the current Project Creation replay remains outstanding.
+is not a new bare-Agent comparison. The current Project Creation result is
+recorded below.
 
 ## Mutation/authorization run
 
@@ -144,5 +144,32 @@ This failed replay is not passing product evidence. The change clarifies the
 visible service contract; it does not change the seed implementation, core Skill,
 or restricted controls. A synthetic workspace adding only object-argument service
 delegation passes the unchanged acceptance 7/7. That checks contract consistency;
-a fresh real-Agent replay is required before claiming that the corrected Project
-Creation tracer completes the two-tracer baseline.
+the following real-Agent replay supplies the corrected fixture's product result.
+
+### 2026-09-05 corrected-context replay
+
+One explicitly activated front-not-end run against commit `8336d2f` used
+`gpt-5.6-sol`, `codex-cli 0.150.1`, and Host Node.js 22.20.0. The Agent added
+`ProjectService.createProject(input)` delegation to the supported platform helper
+and focused repository tests. Its raw stream recorded `turn.completed`, and the
+original CLI process exited zero. The product workspace was accepted without
+manual code corrections.
+
+| Result | front-not-end |
+| --- | ---: |
+| Independently rerun repository tests | 4/4 passed |
+| Restricted control acceptance | 7/7 passed |
+| Residual tracer and preflight containers | 0 |
+
+Restricted acceptance ran on Docker Desktop arm64 with sandbox Node.js 22.23.2.
+It verified duplicate and distinct operation identifiers, trusted workspace
+selection, unauthorized zero-side-effect behavior, input bounds, unchanged
+dependencies, and project-detail compatibility. Both verification commands exited
+zero with no skipped tests.
+
+Together with the corrected List/Search result, this provides passing real-Agent
+product evidence for both existing fixtures under the patched sandbox. The
+List/Search CLI exit-status limitation remains as recorded above. The complete
+Harness also passed 59/59 with zero skips on local Host Node.js 22.20.0 and
+24.17.0. These are fixture-level results, not statistical comparisons or a
+production deployment claim.
