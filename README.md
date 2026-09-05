@@ -46,6 +46,28 @@ $skill-installer Install https://github.com/xllily/front-not-end/tree/master/ski
 Start a new Agent task after installation. Backend-relevant work may activate
 the Skill automatically, or you can invoke `$front-not-end` explicitly.
 
+### Optional workspace routing rule
+
+Automatic Skill selection depends on the Agent host and the task context. If a
+repository regularly includes backend work, add this short rule to its
+workspace-root `AGENTS.md` or equivalent project instructions:
+
+```text
+## Core workflow
+
+- When `front-not-end` is available and a task creates or changes APIs,
+  server-side data, authentication, permissions, persistence, background jobs,
+  integrations, deployment, or other production backend behavior, use the
+  Skill before designing or implementing the change. Skip it for
+  frontend-only visual or styling work. If the Skill is unavailable, continue
+  with the repository's normal workflow.
+```
+
+Use an existing workflow section if the file already has one; the heading is
+not part of the trigger. This rule only routes matching work to the Skill.
+[`skills/front-not-end/SKILL.md`](skills/front-not-end/SKILL.md) remains the
+source of truth for decisions, implementation, verification, and delivery.
+
 ## Use product language
 
 For example:

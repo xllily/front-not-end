@@ -41,6 +41,24 @@ $skill-installer 安装 https://github.com/xllily/front-not-end/tree/master/skil
 安装后开启一个新的 Agent 任务。后端相关工作可以自动激活 Skill，也可以显式使用
 `$front-not-end`。
 
+### 可选的工作区路由规则
+
+Agent 是否自动选择 Skill，取决于 Agent Host 和任务上下文。如果仓库经常会处理后端
+需求，可以在工作区根目录的 `AGENTS.md` 或等效项目指令文件中加入这条简短规则：
+
+```text
+## Core workflow
+
+- 如果 Agent 环境中可用 `front-not-end`，且任务会创建或修改 API、服务端数据、
+  登录鉴权、权限、持久化、后台任务、外部集成、部署或其他生产后端行为，请在设计
+  或实现前使用该 Skill。纯前端视觉或样式任务无需使用；若当前环境不可用，则继续
+  遵循仓库原有工作流。
+```
+
+如果文件已有工作流章节，直接把规则放进去即可，章节名称不影响触发。这条规则只负责
+把匹配的任务交给 Skill；具体决策、实现、验证和交付仍以
+[`skills/front-not-end/SKILL.md`](skills/front-not-end/SKILL.md) 为准。
+
 ## 用产品语言提需求
 
 例如：
