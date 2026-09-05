@@ -11,7 +11,16 @@ export function decodeCursor(cursor) {
   return { createdAt: parsed[0], id: parsed[1] };
 }
 
-export function queryPage(repository, tenantId, { query = null, cursor = null, limit = 25 } = {}) {
+export async function queryPage(repository, tenantId, { query = null, cursor = null, limit = 25 } = {}) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new RangeError("Invalid page size");
-  return repository.queryPage({ tenantId, query, after: decodeCursor(cursor), limit });
+  const { items, next = null } = await repository.queryPage({
+    tenantId,
+    query,
+    after: decodeCursor(cursor),
+    limit,
+  });
+  return {
+    items,
+    nextCursor: next == null ? null : encodeCursor(next),
+  };
 }
