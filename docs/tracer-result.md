@@ -125,3 +125,24 @@ node "$FNE_REPO/evals/harness/run-tracer-acceptance.mjs" \
   --workspace "$PWD" \
   --case project-create-authorization
 ```
+
+### 2026-09-05 service-contract replay finding
+
+One front-not-end replay used `gpt-5.6-sol`, `codex-cli 0.150.1`, and Host Node.js
+22.20.0. The Agent completed with process exit code zero and its repository
+tests independently passed 5/5. Restricted acceptance under sandbox Node.js
+22.23.2 passed 3/7, with no skipped tests or residual containers.
+
+The Agent added `createProject(name, operationId)` and delegated those values
+to the supported platform helper. The control consumer called
+`createProject({ name, operationId })`, causing project-name validation to fail.
+The Agent-visible context identified the helper's responsibilities but did not
+state the new service method's argument shape. The current organization context
+now specifies the page's object-argument call and retry-identifier ownership.
+
+This failed replay is not passing product evidence. The change clarifies the
+visible service contract; it does not change the seed implementation, core Skill,
+or restricted controls. A synthetic workspace adding only object-argument service
+delegation passes the unchanged acceptance 7/7. That checks contract consistency;
+a fresh real-Agent replay is required before claiming that the corrected Project
+Creation tracer completes the two-tracer baseline.
