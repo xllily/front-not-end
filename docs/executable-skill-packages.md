@@ -54,5 +54,7 @@ Every accepted SemVer tag produces a GitHub Release containing the standalone
 `front-not-end` Skill directory as a compressed archive and a SHA-256 checksum.
 The release workflow packages only committed files from the tagged Skill tree,
 checks the package boundary and required metadata, and publishes only after the
-repository test suite passes. See [Continuous Integration and
+repository test suite, exact-commit CI and CodeQL gates, and checksum/provenance
+verification pass. The archive remains limited to the Skill; attestations are
+stored by GitHub and can be verified with `gh attestation verify`. See [Continuous Integration and
 Releases](automation.md) for the release contract.
