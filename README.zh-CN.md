@@ -41,6 +41,19 @@ $skill-installer 安装 https://github.com/xllily/front-not-end/tree/master/skil
 安装后开启一个新的 Agent 任务。后端相关工作可以自动激活 Skill，也可以显式使用
 `$front-not-end`。
 
+### Codex Plugin
+
+[Plugin 入口](.codex-plugin/plugin.json) 加载同一份 `skills/` 目录。
+在本地 `personal` marketplace 配置好指向该插件源码的 `front-not-end` 条目后，执行：
+
+```sh
+codex plugin add front-not-end@personal --json
+```
+
+一次已完成的项目试跑实际读取了安装后的 Skill，并在前后端版本匹配时通过了定向
+后端、前端检查及生产构建。该运行也使用了 Host memory；不能据此声称上下文隔离、
+Skill 带来的因果增益或不同应用版本之间的兼容性。
+
 ### 可选的工作区路由规则
 
 Agent 是否自动选择 Skill，取决于 Agent Host 和任务上下文。如果仓库经常会处理后端

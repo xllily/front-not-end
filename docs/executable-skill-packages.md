@@ -1,14 +1,19 @@
 # Executable Skill Package
 
-The 0.2 contract retains one Codex-compatible package. Its Skill files are
-unchanged from 0.1; the third tracer extends recorded product evidence:
+The Skill keeps the existing operating loop and three-fixture evidence boundary.
+The current source package includes license metadata and the full Apache-2.0
+license text. These packaging changes do not establish new backend capabilities.
 
 ```text
 skills/front-not-end/
+├── LICENSE.txt
 ├── SKILL.md
 └── references/
     └── skill-learning.md
 ```
+
+The packager checks the bundled license against the root LICENSE from the same
+Git ref. Previously published v0.2.0 archives retain their original layout.
 
 `SKILL.md` owns activation, the user/Agent responsibility boundary, the
 technical decision policy, execution, verification, and delivery behavior.

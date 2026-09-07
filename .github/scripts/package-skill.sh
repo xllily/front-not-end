@@ -30,7 +30,7 @@ git -C "$repository_root" archive \
   --output="$archive_path" \
   "$source_ref:skills/front-not-end"
 
-expected_entries=$'front-not-end/\nfront-not-end/SKILL.md\nfront-not-end/references/\nfront-not-end/references/skill-learning.md'
+expected_entries=$'front-not-end/\nfront-not-end/LICENSE.txt\nfront-not-end/SKILL.md\nfront-not-end/references/\nfront-not-end/references/skill-learning.md'
 actual_entries=$(tar -tzf "$archive_path")
 
 if [[ "$actual_entries" != "$expected_entries" ]]; then
@@ -49,6 +49,12 @@ tar -xzf "$archive_path" -C "$extraction_directory"
 test -s "$extraction_directory/front-not-end/SKILL.md"
 test -s "$extraction_directory/front-not-end/references/skill-learning.md"
 grep -Fxq -- "name: front-not-end" "$extraction_directory/front-not-end/SKILL.md"
+grep -Fxq -- "license: Apache-2.0" "$extraction_directory/front-not-end/SKILL.md"
+git -C "$repository_root" show "$source_ref:LICENSE" > "$extraction_directory/LICENSE.expected"
+if ! cmp -s "$extraction_directory/LICENSE.expected" "$extraction_directory/front-not-end/LICENSE.txt"; then
+  echo "Bundled LICENSE must match root LICENSE in source ref." >&2
+  exit 1
+fi
 
 if command -v sha256sum >/dev/null 2>&1; then
   checksum=$(sha256sum "$archive_path" | awk '{print $1}')

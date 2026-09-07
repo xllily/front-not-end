@@ -46,6 +46,21 @@ $skill-installer Install https://github.com/xllily/front-not-end/tree/master/ski
 Start a new Agent task after installation. Backend-relevant work may activate
 the Skill automatically, or you can invoke `$front-not-end` explicitly.
 
+### Codex plugin
+
+The [plugin manifest](.codex-plugin/plugin.json) loads the same `skills/`
+directory. Once your local `personal` marketplace has a `front-not-end` entry
+pointing to this plugin source, install it with:
+
+```sh
+codex plugin add front-not-end@personal --json
+```
+
+A completed project trial read the installed Skill and passed focused backend
+and frontend checks and a production build with matching application versions.
+The run also used host memory. It does not establish context isolation, a causal
+improvement from the Skill, or compatibility between different application versions.
+
 ### Optional workspace routing rule
 
 Automatic Skill selection depends on the Agent host and the task context. If a
