@@ -1,0 +1,17 @@
+{
+  "name": "front-not-end",
+  "version": "0.2.1",
+  "description": "Help frontend developers deliver backend changes with an existing Coding Agent.",
+  "author": { "name": "front-not-end contributors" },
+  "license": "Apache-2.0",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "front-not-end",
+    "shortDescription": "Carry frontend requests through backend delivery.",
+    "longDescription": "Use repository-native capabilities, make task-relevant backend decisions, and verify the final implementation.",
+    "developerName": "front-not-end contributors",
+    "category": "Developer Tools",
+    "capabilities": [],
+    "defaultPrompt": ["Use front-not-end to implement my feature in this repository."]
+  }
+}

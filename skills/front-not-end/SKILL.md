@@ -1,6 +1,7 @@
 ---
 name: front-not-end
 description: Use when a product or frontend request creates or changes APIs, server-side data, authentication, permissions, persistence, background jobs, integrations, deployment, or other production backend behavior.
+license: Apache-2.0
 ---
 
 # front-not-end
