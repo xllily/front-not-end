@@ -1,0 +1,10 @@
+{
+  "name": "real-consumer-contract-slice",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/mcp-server.mjs",
+    "start:baseline": "node src/mcp-server.mjs --baseline",
+    "test": "node --test test/*.test.mjs"
+  }
+}
