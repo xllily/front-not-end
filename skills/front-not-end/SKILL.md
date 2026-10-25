@@ -30,9 +30,10 @@ before designing. Treat the current stack and operating model as strong
 constraints; prefer reuse or a small extension over new machinery.
 
 Treat tested behavior and existing public shapes as compatibility contracts.
-Before extending a capability or translating its output, produce a failing
-repository test or executable example showing that its current contract cannot
-express the requested behavior. Without that evidence, delegate to it unchanged.
+Before replacing or broadening a capability, identify the concrete gap in its
+current contract. Use source and caller evidence for clear, low-risk gaps; add
+a failing test or executable example when behavior is uncertain or regression
+risk warrants it. Reuse the existing capability when it already fits.
 
 Infer actors, data boundaries, invariants, failure consequences, and realistic
 load. Activate only concerns that can change this task's design, implementation,
@@ -70,8 +71,10 @@ implemented or explicitly blocked by a fact or authority you cannot supply.
 
 ### 4. Prove the final state
 
-Run repository-native checks plus focused tests for the decisions and failure
-modes introduced. Fix failures and rerun. Evidence must come from the final
+Run affected repository-native checks and meaningful regression tests for the
+behavior and failure modes introduced. Low-impact wording or mechanical changes
+need focused content/diff checks. Fix task-caused failures and rerun affected
+checks; broaden testing only for new failures or unresolved material risk. Evidence must come from the final
 working tree; prompts, configured commands, old results, and assertions are not
 evidence.
 

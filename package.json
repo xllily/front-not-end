@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "doctor": "node evals/harness/tracer-preflight.mjs",
-    "test": "node --test evals/harness/*.test.mjs",
+    "test": "node --test evals/harness/*.test.mjs evals/fixtures/real-consumer-contract-slice/seed/test/*.test.mjs",
+    "test:preview": "node --test evals/fixtures/real-consumer-contract-slice/seed/test/*.test.mjs",
+    "test:consumer": "node evals/harness/run-preview-consumer.mjs",
     "tracer:pull-image": "node evals/harness/pull-tracer-image.mjs"
   }
 }

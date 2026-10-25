@@ -1,6 +1,6 @@
 {
   "name": "front-not-end",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Help frontend developers deliver backend changes with an existing Coding Agent.",
   "author": { "name": "front-not-end contributors" },
   "license": "Apache-2.0",

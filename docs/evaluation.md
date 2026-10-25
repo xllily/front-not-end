@@ -54,6 +54,111 @@ For order webhooks, the Agent should:
 
 ## Executable proof
 
+### Local MCP preview slice
+
+The opt-in [preview service](../evals/fixtures/real-consumer-contract-slice/seed/src/mcp-server.mjs)
+provides `preview_card` from text or the bundled `sample-card` SVG. It returns a
+JSON-encoded result containing `mode`, `mimeType: "text/html"` and a
+self-contained HTML document. Text is escaped and asset data is embedded;
+generation uses no model, account, network, arbitrary file read or file write.
+Both schemas use the same validation and generation handler. The default
+schema is a flat object; `--baseline` adds only the top-level `oneOf` branches.
+The handler enforces the branches in either mode before invoking generation.
+
+From the repository root, select the nvm default runtime and run:
+
+```sh
+nvm use default
+npm run test:preview
+```
+
+The root `npm test` includes these checks, so both CI and release enforce them.
+The fixture's own `npm test` also runs them. They exercise actual stdio
+process startup, initialization, tool listing and calls for both valid inputs,
+request/result identifiers, escaped HTML, and invalid input with no generation
+callback. The local transport follows MCP
+[stdio framing](https://modelcontextprotocol.io/specification/2024-11-05/basic/transports)
+and [initialization](https://modelcontextprotocol.io/specification/2024-11-05/basic/lifecycle),
+negotiating protocol `2024-11-05`. Each input line is limited to 16 KiB. These
+are service checks against authored fixture code, not isolated acceptance of
+Agent-produced code or evidence of any Coding Agent's discovery behavior.
+
+For a direct local protocol example, save these newline-delimited messages as
+`/tmp/preview-requests.jsonl`:
+
+```jsonl
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"local-example","version":"1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"tools/list"}
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"preview_card","arguments":{"mode":"text","text":"A quiet garden"}}}
+{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"preview_card","arguments":{"mode":"asset","assetId":"sample-card"}}}
+```
+
+Then run the service directly, keeping npm banners out of the protocol stream:
+
+```sh
+node evals/fixtures/real-consumer-contract-slice/seed/src/mcp-server.mjs < /tmp/preview-requests.jsonl
+node evals/fixtures/real-consumer-contract-slice/seed/src/mcp-server.mjs --baseline < /tmp/preview-requests.jsonl
+```
+
+These direct protocol commands establish local service behavior. The separate
+[consumer entry](../evals/harness/run-preview-consumer.mjs) runs this exact
+authored fixture through the pinned real CLI:
+
+```sh
+npm run doctor
+npm run test:consumer -- --cli /path/to/verified/claude
+```
+
+The entry requires the `claude-linux-arm64-musl.tar.gz` asset from the official
+[Claude Code 2.1.293 Release](https://github.com/anthropics/claude-code/releases/tag/v2.1.293).
+Verify the archive against the published SHA256
+`3e019b4b2e14e1f297cf318a11c52d6c7dc5c0bc63713ea2e05062d51e6bb2d2`
+before extracting it. The executable must have SHA256
+`00755ae106b6925c1adb2b17e4c6d9b0c41eb4cc55bcad3581345b0aa3176c85`.
+The entry checks the executable again before and after execution and requires
+its actual container-reported version. It never downloads or upgrades a CLI,
+changes the global installation, pulls an image or accepts a different binary.
+An archive hash match does not claim independent OpenPGP signature verification.
+
+The trusted controller, CLI and independent permission-restricted handler run
+inside one disposable container with the existing pinned image, non-root user,
+256 MiB/32 PID/1 CPU limits, read-only mounts and `--network=none`. The controller
+checks internal loopback and the lack of an external route. A private local
+model endpoint drives protocol responses; no real model or account is used.
+The CLI receives a fresh HOME/config, synthetic key, `--bare`, only the fixed
+MCP server, no built-in tools, and disabled tool search, updates and telemetry.
+The handler receives neither the CLI environment nor the private capture or
+completion challenge. Child-process, Worker and control/proc-file access are
+checked as rejected; the trusted parent also disables SIGUSR1 inspector startup.
+
+Both arms share the same binary and configuration. `PASS` requires the actual
+baseline model request to omit the target tool, the flat expression to include
+it, two actual MCP calls and associated model tool results, both HTML previews,
+and direct invalid-input rejection without increasing the observed generation
+callback count. Unauthorized model paths, workspace success strings and missing
+completion receipts cannot establish success. The host accepts only one
+challenge-bound receipt after the controller finishes every required check,
+then removes its exact container and snapshot. Cleanup failure prevents `PASS`.
+
+The JSON result includes the fixed consumer source/hash, runtime image, case,
+source and control hashes, settings and actual observations. Skill acquisition
+is `none`: no front-not-end Skill or live model is loaded into the consumer.
+Missing dependencies report `SKIP` with nonzero exit. Sandbox preflight marks
+unavailable Docker, image, context or temporary-marker setup as `SKIP` only when
+cleanup succeeded. Rejected endpoint boundaries, runtime/marker/output or
+resource-limit checks, unknown preflight errors and any cleanup failure report
+`FAIL`. Preflight results preserve the primary code/reason and separate
+container/marker cleanup diagnostics. An unreproduced negative control reports
+`UNVERIFIED`.
+Local consumer compatibility does not establish model quality, Agent repair
+effectiveness or causal Skill benefit. Those remain **UNVERIFIED**. This entry
+is fixed to the authored preview fixture, not a general acceptance runner for
+arbitrary Agent workspaces. The existing three tracer defaults and permissions
+remain unchanged.
+
+### Existing tracer acceptance
+
 Each fixture's repository tests verify its existing platform primitive. The
 List/Search seed test makes the helper's public `{ items, nextCursor }` response
 shape visible while keeping the repository's stable key internal. The
