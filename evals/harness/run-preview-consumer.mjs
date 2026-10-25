@@ -161,6 +161,30 @@ export function parsePreviewConsumerOutput(stdout, challenge) {
   return observation;
 }
 
+export function classifyPreviewPreflightError(error) {
+  const code = error?.code ?? "ERR_PREVIEW_PREFLIGHT";
+  const cleanupError = error?.cleanupError;
+  const markerCleanupError = error?.markerCleanupError ?? cleanupError?.markerCleanupError;
+  const cleanupFailed = Boolean(
+    cleanupError || markerCleanupError ||
+    code === "ERR_TRACER_PREFLIGHT_CLEANUP" || code === "ERR_TRACER_PREFLIGHT_MARKER_CLEANUP"
+  );
+  const unavailable = [
+    "ERR_TRACER_PREFLIGHT_DOCKER", "ERR_TRACER_PREFLIGHT_IMAGE",
+    "ERR_TRACER_PREFLIGHT_ENDPOINT", "ERR_TRACER_PREFLIGHT_SETUP",
+  ].includes(code);
+  const diagnostic = (failure) => ({
+    code: failure?.code ?? "ERR_PREVIEW_PREFLIGHT",
+    reason: escapeTerminalText(failure?.message ?? "Fixed sandbox preflight failed."),
+  });
+  return {
+    status: unavailable && !cleanupFailed ? "SKIP" : "FAIL",
+    ...diagnostic(error), cleanupFailed,
+    ...(cleanupError ? { cleanupError: diagnostic(cleanupError) } : {}),
+    ...(markerCleanupError ? { markerCleanupError: diagnostic(markerCleanupError) } : {}),
+  };
+}
+
 export async function runPreviewConsumer({ cliPath, timeoutMs = 50_000 } = {}) {
   let verifiedCli;
   try { verifiedCli = await verifyPreviewBinary(cliPath); } catch (error) {
@@ -168,7 +192,7 @@ export async function runPreviewConsumer({ cliPath, timeoutMs = 50_000 } = {}) {
   }
   let preflight;
   try { preflight = await runTracerPreflight(); } catch (error) {
-    return { status: "SKIP", reason: "Fixed sandbox preflight unavailable.", code: error.code };
+    return classifyPreviewPreflightError(error);
   }
   const snapshot = await createTracerSnapshot({
     workspace: path.join(evalsRoot, "fixtures", caseName, "seed"),

@@ -1,4 +1,11 @@
-## ADDED Requirements
+# Real Consumer Contract Slice
+
+## Purpose
+
+Provide a local preview tool and verify its discovery, dispatch, validation,
+and isolation through the pinned real consumer without a paid model.
+
+## Requirements
 
 ### Requirement: Runnable consumer-facing product slice
 
@@ -10,7 +17,7 @@ The project SHALL provide one opt-in Node ESM product case in which a user can g
 
 ### Requirement: Pinned real consumer dependency
 
-Consumer acceptance MUST execute the actual Claude Code SDK CLI binary for the fixed target version, not a reimplementation of its parser or discovery behavior. The initial target SHALL be historical version 2.1.293. Before execution the control entry SHALL verify and record its version, binary SHA256/source, fixed runtime, case/source hashes and minimal configuration. A version change SHALL be reported as a different reproduction condition.
+Consumer acceptance MUST execute the actual Claude Code SDK CLI binary for the fixed target version, not a reimplementation of its parser or discovery behavior. The target SHALL be historical version 2.1.293. Before execution the control entry SHALL verify and record its version, binary SHA256/source, fixed runtime, case/source hashes and minimal configuration. A version change SHALL be reported as a different reproduction condition.
 
 #### Scenario: Verified binary is available
 - **WHEN** a legally available target binary passes the version/hash and sandbox preflight
@@ -83,6 +90,10 @@ The case SHALL expose a reproducible opt-in command and report PASS, FAIL, SKIP 
 - **WHEN** discovery, actual dispatch, valid branches, invalid combinations and required isolation checks succeed using the local deterministic stub
 - **THEN** the report states those specific local contract checks passed and leaves real-model behavior and Skill uplift UNVERIFIED
 
+#### Scenario: Preflight containment or cleanup fails
+- **WHEN** preflight rejects the endpoint boundary, runtime identity, diagnostic output, bind marker or resource limits, or diagnostic-container or marker cleanup fails
+- **THEN** the entry reports FAIL, retains the primary diagnostic code and reason, and identifies each cleanup failure without downgrading it to a missing dependency
+
 #### Scenario: Existing checks still protect the product
 - **WHEN** this case is added
-- **THEN** the repository's required `npm test` checks pass, including affected boundary tests, and the existing tracer defaults and fail-closed behavior remain unchanged
+- **THEN** the repository's required `npm test` checks pass, including the preview service and affected boundary tests, and the existing tracer defaults and fail-closed behavior remain unchanged

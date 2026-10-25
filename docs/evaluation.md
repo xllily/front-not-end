@@ -72,7 +72,8 @@ nvm use default
 npm run test:preview
 ```
 
-The fixture's own `npm test` runs the same checks. They exercise actual stdio
+The root `npm test` includes these checks, so both CI and release enforce them.
+The fixture's own `npm test` also runs them. They exercise actual stdio
 process startup, initialization, tool listing and calls for both valid inputs,
 request/result identifiers, escaped HTML, and invalid input with no generation
 callback. The local transport follows MCP
@@ -143,8 +144,13 @@ then removes its exact container and snapshot. Cleanup failure prevents `PASS`.
 The JSON result includes the fixed consumer source/hash, runtime image, case,
 source and control hashes, settings and actual observations. Skill acquisition
 is `none`: no front-not-end Skill or live model is loaded into the consumer.
-Missing dependencies report `SKIP` with nonzero exit; assertion or containment
-failure reports `FAIL`; an unreproduced negative control reports `UNVERIFIED`.
+Missing dependencies report `SKIP` with nonzero exit. Sandbox preflight marks
+unavailable Docker, image, context or temporary-marker setup as `SKIP` only when
+cleanup succeeded. Rejected endpoint boundaries, runtime/marker/output or
+resource-limit checks, unknown preflight errors and any cleanup failure report
+`FAIL`. Preflight results preserve the primary code/reason and separate
+container/marker cleanup diagnostics. An unreproduced negative control reports
+`UNVERIFIED`.
 Local consumer compatibility does not establish model quality, Agent repair
 effectiveness or causal Skill benefit. Those remain **UNVERIFIED**. This entry
 is fixed to the authored preview fixture, not a general acceptance runner for

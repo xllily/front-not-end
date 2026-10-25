@@ -47,7 +47,7 @@ nvm use default
 npm test
 ```
 
-`npm test` runs the built-in `node:test` suite for the active Tracer acceptance runner. There is no compilation step; the project uses native ECMAScript modules (`.mjs`). Install dependencies with `npm ci` when starting from the committed lockfile.
+`npm test` runs the built-in `node:test` suites for the active Tracer acceptance runner and the local preview service. There is no compilation step; the project uses native ECMAScript modules (`.mjs`). Install dependencies with `npm ci` when starting from the committed lockfile.
 
 ## Coding Style & Naming Conventions
 

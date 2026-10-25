@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile as execFileCallback } from "node:child_process";
-import { chmod, mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -8,12 +8,14 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import {
+  classifyPreviewPreflightError,
   parsePreviewConsumerOutput,
   previewConsumerDependency,
   runPreviewConsumer,
   runPreviewContainer,
   verifyPreviewBinary,
 } from "./run-preview-consumer.mjs";
+import { runTracerPreflight } from "./tracer-preflight.mjs";
 import { tracerSandboxImage } from "./tracer-sandbox.mjs";
 import { stopChild, verifyPreviewInputSchema } from "../fixtures/real-consumer-contract-slice/acceptance/consumer-control.mjs";
 import { previewTool } from "../fixtures/real-consumer-contract-slice/seed/src/preview-card.mjs";
@@ -30,6 +32,155 @@ const containerInput = {
   snapshot: { workspace: "/tmp/preview-test-workspace", control: "/tmp/preview-test-control" },
   challenge,
 };
+
+async function previewPreflightFailure({ transform = (value) => value, createFailure, removeFailure, stdout } = {}) {
+  let markerRoot;
+  try {
+    await runTracerPreflight({
+      environment: { DOCKER_HOST: "unix:///tmp/preview-preflight-classification.sock" },
+      dockerCommand: async (args) => {
+        if (args[2] === "create") {
+          if (createFailure) throw createFailure;
+          markerRoot = args.find((argument) => argument.startsWith("--mount=")).match(/src=([^,]+)/u)[1];
+          return { stdout: containerId + "\n", stderr: "" };
+        }
+        if (args[2] === "start") {
+          const observation = transform({
+            marker: await readFile(path.join(markerRoot, "marker"), "utf8"),
+            nodeVersion: "v22.23.2",
+            cgroupVersion: 2,
+            pids: { value: "32" },
+            memory: { value: "268435456" },
+            cpu: { value: "100000 100000" },
+          });
+          return { stdout: stdout ?? JSON.stringify(observation), stderr: "" };
+        }
+        if (args[2] === "rm") {
+          if (removeFailure) throw removeFailure;
+          return { stdout: "", stderr: "" };
+        }
+        throw new Error("Unexpected diagnostic operation");
+      },
+    });
+  } catch (error) {
+    return error;
+  }
+  assert.fail("Expected diagnostic preflight failure");
+}
+
+test("preview preflight classification keeps a missing image as SKIP", async () => {
+  const error = await previewPreflightFailure({
+    createFailure: Object.assign(new Error("Pinned image is absent"), { stderr: "No such image" }),
+  });
+  assert.equal(error.code, "ERR_TRACER_PREFLIGHT_IMAGE");
+  const result = classifyPreviewPreflightError(error);
+  assert.equal(result.status, "SKIP");
+  assert.equal(result.code, error.code);
+  assert.equal(result.reason, error.message);
+  assert.equal(result.cleanupFailed, false);
+});
+
+test("preview preflight classification rejects observed isolation and diagnostic failures", async () => {
+  for (const [code, transform] of [
+    ["ERR_TRACER_PREFLIGHT_MARKER", (value) => ({ ...value, marker: "wrong-marker" })],
+    ["ERR_TRACER_PREFLIGHT_NODE_VERSION", (value) => ({ ...value, nodeVersion: "v22.23.1" })],
+    ["ERR_TRACER_PREFLIGHT_CGROUP", (value) => ({ ...value, cgroupVersion: null })],
+    ["ERR_TRACER_PREFLIGHT_PIDS", (value) => ({ ...value, pids: { value: "max" } })],
+    ["ERR_TRACER_PREFLIGHT_MEMORY", (value) => ({ ...value, memory: { value: "268435457" } })],
+    ["ERR_TRACER_PREFLIGHT_CPU", (value) => ({ ...value, cpu: { value: "max 100000" } })],
+  ]) {
+    const error = await previewPreflightFailure({ transform });
+    assert.equal(error.code, code);
+    const result = classifyPreviewPreflightError(error);
+    assert.equal(result.status, "FAIL", code);
+    assert.equal(result.code, code);
+    assert.equal(result.reason, error.message);
+    assert.equal(result.cleanupFailed, false);
+  }
+  const malformed = await previewPreflightFailure({ stdout: "not diagnostic JSON" });
+  assert.equal(malformed.code, "ERR_TRACER_PREFLIGHT_OUTPUT");
+  assert.equal(classifyPreviewPreflightError(malformed).status, "FAIL");
+});
+
+test("preview preflight classification rejects remote endpoints before any Docker call", async () => {
+  let calls = 0;
+  let failure;
+  await assert.rejects(runTracerPreflight({
+    environment: { DOCKER_HOST: "tcp://127.0.0.1:2375" },
+    dockerCommand: async () => { calls += 1; throw new Error("Docker must not run"); },
+  }), (error) => {
+    failure = error;
+    return error.code === "ERR_TRACER_PREFLIGHT_REMOTE_ENDPOINT";
+  });
+  assert.equal(calls, 0);
+  assert.equal(classifyPreviewPreflightError(failure).status, "FAIL");
+});
+
+test("preview preflight classification skips only known unavailable dependencies", () => {
+  for (const suffix of ["DOCKER", "IMAGE", "ENDPOINT", "SETUP"]) {
+    const code = "ERR_TRACER_PREFLIGHT_" + suffix;
+    assert.equal(classifyPreviewPreflightError(Object.assign(new Error("Unavailable"), { code })).status, "SKIP", code);
+  }
+  const unknown = classifyPreviewPreflightError(Object.assign(new Error("Unexpected diagnostic failure"), { code: "ERR_UNEXPECTED" }));
+  assert.equal(unknown.status, "FAIL");
+  assert.equal(unknown.code, "ERR_UNEXPECTED");
+  const uncoded = classifyPreviewPreflightError(new Error("Unclassified failure"));
+  assert.equal(uncoded.status, "FAIL");
+  assert.equal(uncoded.reason, "Unclassified failure");
+});
+
+test("preview preflight classification preserves real primary failures when container cleanup fails", async () => {
+  const removeFailure = new Error("Diagnostic container remained present");
+  const cleanupOnly = await previewPreflightFailure({ removeFailure });
+  assert.equal(cleanupOnly.code, "ERR_TRACER_PREFLIGHT_CLEANUP");
+  assert.equal(classifyPreviewPreflightError(cleanupOnly).status, "FAIL");
+  assert.equal(classifyPreviewPreflightError(cleanupOnly).cleanupFailed, true);
+
+  for (const options of [
+    { transform: (value) => ({ ...value, pids: { value: "max" } }) },
+    { createFailure: Object.assign(new Error("Pinned image is absent"), { stderr: "No such image" }) },
+  ]) {
+    const error = await previewPreflightFailure({ ...options, removeFailure });
+    const result = classifyPreviewPreflightError(error);
+    assert.equal(result.status, "FAIL");
+    assert.equal(result.code, options.createFailure ? "ERR_TRACER_PREFLIGHT_IMAGE" : "ERR_TRACER_PREFLIGHT_PIDS");
+    assert.equal(result.reason, error.message);
+    assert.equal(result.cleanupFailed, true);
+    assert.deepEqual(result.cleanupError, { code: "ERR_TRACER_PREFLIGHT_CLEANUP", reason: error.cleanupError.message });
+  }
+});
+
+test("preview preflight classification retains and escapes primary and marker cleanup diagnostics", () => {
+  const cleanupError = Object.assign(new Error("Container \u001b[31mcleanup"), { code: "ERR_TRACER_PREFLIGHT_CLEANUP" });
+  const markerCleanupError = Object.assign(new Error("Marker \u202ecleanup"), { code: "ERR_TRACER_PREFLIGHT_MARKER_CLEANUP" });
+  const primary = Object.assign(new Error("Primary \u001b[31munavailable"), {
+    code: "ERR_TRACER_PREFLIGHT_DOCKER", cleanupError, markerCleanupError,
+  });
+  assert.deepEqual(classifyPreviewPreflightError(primary), {
+    status: "FAIL", code: "ERR_TRACER_PREFLIGHT_DOCKER", reason: "Primary \\u001b[31munavailable", cleanupFailed: true,
+    cleanupError: { code: cleanupError.code, reason: "Container \\u001b[31mcleanup" },
+    markerCleanupError: { code: markerCleanupError.code, reason: "Marker \\u202ecleanup" },
+  });
+  assert.equal(primary.message, "Primary \u001b[31munavailable");
+  assert.equal(primary.cleanupError, cleanupError);
+  assert.equal(primary.markerCleanupError, markerCleanupError);
+
+  for (const error of [
+    Object.assign(new Error("Marker cleanup failed"), { code: "ERR_TRACER_PREFLIGHT_MARKER_CLEANUP" }),
+    Object.assign(new Error("Image absent"), { code: "ERR_TRACER_PREFLIGHT_IMAGE", markerCleanupError }),
+    Object.assign(new Error("Image absent"), {
+      code: "ERR_TRACER_PREFLIGHT_IMAGE", cleanupError: Object.assign(new Error("Container cleanup failed"), { markerCleanupError }),
+    }),
+  ]) {
+    const result = classifyPreviewPreflightError(error);
+    assert.equal(result.status, "FAIL");
+    assert.equal(result.code, error.code);
+    assert.equal(result.cleanupFailed, true);
+    if (error.code !== "ERR_TRACER_PREFLIGHT_MARKER_CLEANUP") {
+      assert.deepEqual(result.markerCleanupError, { code: markerCleanupError.code, reason: "Marker \\u202ecleanup" });
+    }
+  }
+});
 
 test("consumer dependency rejects absent and substituted bytes before execution", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "front-not-end-preview-dependency-"));
