@@ -78,15 +78,16 @@ test("invalid branch combinations and untrusted asset names fail before generati
 
 test("default previews produce deterministic escaped HTML and inline local assets", async () => {
   const handler = createPreviewCardHandler();
-  const input = { mode: "text", text: "  <script>alert('card')</script> & preview  " };
-  const result = await handler(input);
-  const preview = readPreview(result);
-  assert.deepEqual(await handler(input), result);
-  assert.equal(preview.mode, "text");
-  assert.equal(preview.mimeType, "text/html");
-  assert.match(preview.html, /&lt;script&gt;/u);
-  assert.match(preview.html, /&amp; preview/u);
-  assert.doesNotMatch(preview.html, /<script>/u);
+  for (const tag of ["script", "SCRIPT", "ScRiPt"]) {
+    const input = { mode: "text", text: `  <${tag} data-label="card">alert('card')</${tag}> & preview  ` };
+    const result = await handler(input);
+    const preview = readPreview(result);
+    assert.deepEqual(await handler(input), result);
+    assert.equal(preview.mode, "text");
+    assert.equal(preview.mimeType, "text/html");
+    assert.ok(preview.html.includes(`&lt;${tag} data-label=&quot;card&quot;&gt;alert(&#39;card&#39;)&lt;/${tag}&gt; &amp; preview`));
+    assert.doesNotMatch(preview.html, /<script\b/iu);
+  }
 
   const asset = readPreview(await handler({ mode: "asset", assetId: "sample-card" }));
   assert.equal(asset.mode, "asset");
