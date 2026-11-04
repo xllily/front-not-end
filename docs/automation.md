@@ -23,6 +23,36 @@ credentials, receives no secrets, and cancels superseded runs for the same
 branch or pull request. Third-party workflow dependencies are pinned to commit
 SHAs. Dependabot proposes their updates monthly.
 
+Dependabot creates update proposals; CI validates them but does not approve or
+merge them. Repository maintainers review and merge dependency PRs, synchronize
+stale branches, and wait for the required checks on the updated revision.
+
+## Code scanning
+
+`.github/workflows/codeql.yml` uses CodeQL advanced setup to scan GitHub Actions
+and JavaScript/TypeScript on pull requests to `master`, pushes to `master`,
+weekly schedules, and manual dispatches. It uses the `pull_request` event for
+Dependabot PRs: GitHub's default setup skips Dependabot-triggered scans and can
+report a neutral check with missing configurations instead of analysis results.
+
+The scanner checks out source without persisted credentials and does not
+install or execute project dependencies. Its only write permission is
+`security-events: write` for uploading analysis. GitHub permits uploads from
+`pull_request` runs even when a Dependabot or fork token is read-only; no PAT or
+repository secret is required. The language categories remain compatible with
+the release gate's exact-commit JavaScript analysis lookup.
+
+Require both `CodeQL (actions)` and `CodeQL (javascript-typescript)` alongside
+the three CI checks. A missing scan must block merging; the aggregate `CodeQL`
+check alone can be neutral and is not proof that both languages were analyzed.
+Disable CodeQL default setup when activating this workflow, because GitHub
+rejects advanced-setup uploads while default setup is enabled. Verify successful
+analyses on the migration PR and `master` before relying on the new gates. If
+the migration fails, restore default setup until the workflow is corrected.
+
+See GitHub's [default-setup limitation](https://github.com/github/codeql-action/issues/2858)
+and [Dependabot upload permissions](https://docs.github.com/en/code-security/reference/code-scanning/troubleshoot-analysis-errors/resource-not-accessible).
+
 ## Versioned releases
 
 `.github/workflows/release.yml` runs only when a tag matching `v*.*.*` is
@@ -107,14 +137,16 @@ Configure the following rules in GitHub before treating the automation as a
 merge or release gate:
 
 1. Protect `master` and require pull requests plus the `Test (Node 22)`,
-   `Test (Node 24)`, and `Package skill` checks.
+   `Test (Node 24)`, `Package skill`, `CodeQL (actions)`, and
+   `CodeQL (javascript-typescript)` checks.
 2. Require branches to be current before merging and dismiss stale approvals.
 3. Add a tag ruleset for `v*.*.*` that restricts tag creation and deletion to
    release maintainers.
 4. Enable immutable releases so published tags and assets cannot be changed.
-5. Enable CodeQL default setup for JavaScript/TypeScript and resolve any open
-   High/Critical findings before release. The release gate reads the successful
-   scan and alerts; it never enables scanning or dismisses findings.
+5. Use the committed CodeQL advanced-setup workflow with default setup disabled,
+   and resolve any open High/Critical findings before release. The release gate
+   reads the successful scan and alerts; it never enables scanning or dismisses
+   findings.
 6. Enable secret scanning and secret push protection.
 7. Keep the default `GITHUB_TOKEN` permission read-only. The release workflow
    scopes its required write permissions at job level.
